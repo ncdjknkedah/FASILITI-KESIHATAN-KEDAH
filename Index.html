@@ -10,7 +10,7 @@
   
   <style>
     /* Ketinggian responsif Peta dan Panel mengikut peranti */
-    #map { height: 60vh; width: 100%; border-radius: 0.5rem; z-index: 10; }
+    #map { height: 60vh; width: 100%; border-radius: 0.5rem; z-index: 10; font-family: ui-sans-serif, system-ui, sans-serif; }
     @media (min-width: 1024px) { #map, .panel-scroll { height: 700px; } }
     
     .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
@@ -19,12 +19,12 @@
     
     /* CSS Khas untuk Label Nama Fasiliti Terapung */
     .leaflet-tooltip.custom-map-label {
-        background-color: rgba(255, 255, 255, 0.9);
+        background-color: rgba(255, 255, 255, 0.95);
         border: 1px solid #64748b;
         font-size: 11px;
         font-weight: 800;
         padding: 4px 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         color: #1e3a8a;
         white-space: nowrap;
     }
@@ -65,7 +65,6 @@
   </nav>
 
   <div class="max-w-[95rem] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-    <!-- Bar Statistik Indikator -->
     <div class="grid grid-cols-2 gap-3 sm:gap-6 mb-6" id="stats-container">
       <div class="bg-white rounded-xl shadow-sm px-4 py-3 sm:p-6 border-l-[3px] border-blue-500 flex items-center justify-between">
         <div>
@@ -110,13 +109,6 @@
       <!-- KOTAK PETA (KANAN) -->
       <div class="lg:col-span-3 bg-white rounded-xl shadow-md p-1 sm:p-3 relative ring-1 ring-gray-200 overflow-hidden">
         
-        <!-- BUTANG TOGGLE TERAPUNG DI ATAS PETA -->
-        <div class="absolute top-[60px] sm:top-6 right-2 sm:right-6 z-[400]">
-           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-2 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs shadow-[0_2px_8px_rgba(0,0,0,0.3)] rounded-md border border-gray-200 font-extrabold text-blue-800 hover:bg-gray-50 transition cursor-pointer">
-              🏷️ PAPAR NAMA
-           </button>
-        </div>
-
         <div id="map"></div>
 
         <!-- PETUNJUK PETA BOLEH SERET / SOROK -->
@@ -146,7 +138,6 @@
     let map; let markersLayer = new L.LayerGroup(); let shapeLayer = new L.LayerGroup();
     let globalData = []; let globalHeaders = [];
     
-    // Kategori warna penanda peta
     const ALLOWED_FILTER_INDICES = [3, 5, 6, 12, 13, 14, 15]; 
     const baseColors = ['blue', 'red', 'green', 'orange', 'violet', 'gold', 'yellow', 'grey', 'black', 'blue'];
     const hexColors = ['#2A81CB', '#CB2B3E', '#2AAD27', '#CB8427', '#9C2BCB', '#FFD326', '#CAC428', '#7B7B7B', '#3D3D3D', '#2A81CB'];
@@ -154,7 +145,6 @@
     let categoryColorMap = {}; 
     let groupCount = 0; let rowCount = 0;
     
-    // Pelukis Pemetaan
     let isLabelVisible = false;
     let activeFilterKeysSet = new Set(); 
 
@@ -163,12 +153,23 @@
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© JKN Kedah', maxZoom: 18 }).addTo(map);
       markersLayer.addTo(map); shapeLayer.addTo(map);
 
+      // --- CREATE LEAFLET CUSTOM BUTANG PAPAR NAMA ---
+      let toggleLabelControl = L.control({position: 'topright'});
+      toggleLabelControl.onAdd = function () {
+          let div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+          div.innerHTML = `<button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-3 py-2 text-xs font-extrabold text-blue-800 hover:bg-gray-100 transition shadow-[0_2px_5px_rgba(0,0,0,0.3)] rounded" style="cursor: pointer;">
+             🏷️ Papar Nama Fasiliti
+          </button>`;
+          L.DomEvent.disableClickPropagation(div); // Halang klik merebak ke peta
+          return div;
+      };
+      toggleLabelControl.addTo(map);
+      // ------------------------------------------------
+
       // Aktifkan Skrip Penyeretan UI Petunjuk
       let legendEl = document.getElementById('draggable-legend');
       let draggable = new L.Draggable(legendEl);
       draggable.enable();
-      
-      // Halang Peta dari terseret ketika nak seret Petunjuk
       L.DomEvent.disableClickPropagation(legendEl);
       L.DomEvent.disableScrollPropagation(legendEl);
 
@@ -262,11 +263,13 @@
         isLabelVisible = !isLabelVisible;
         let btn = document.getElementById("toggle-label-btn");
         if(isLabelVisible) {
-            btn.innerHTML = `🚫 SOROK NAMA`;
-            btn.classList.add("text-white", "bg-red-600", "border-red-600", "shadow-red-500/50"); btn.classList.remove("text-blue-800", "bg-white", "border-gray-200");
+            btn.innerHTML = `🚫 Sembunyikan Nama`;
+            // Gaya butang merah
+            btn.className = "bg-red-600 px-3 py-2 text-white border-red-700 font-extrabold text-xs hover:bg-red-700 transition shadow-[0_2px_5px_rgba(0,0,0,0.3)] rounded cursor-pointer";
         } else {
-            btn.innerHTML = `🏷️ PAPAR NAMA`;
-            btn.classList.remove("text-white", "bg-red-600", "border-red-600", "shadow-red-500/50"); btn.classList.add("text-blue-800", "bg-white", "border-gray-200");
+            btn.innerHTML = `🏷️ Papar Nama Fasiliti`;
+            // Gaya butang asal biru putih
+            btn.className = "bg-white px-3 py-2 text-xs font-extrabold text-blue-800 hover:bg-gray-100 transition shadow-[0_2px_5px_rgba(0,0,0,0.3)] rounded cursor-pointer";
         }
         applyFilters(); 
     }
@@ -315,7 +318,6 @@
       const latCol = globalHeaders.find(h => h.toLowerCase().includes('lat'));
       const longCol = globalHeaders.find(h => h.toLowerCase().includes('log') || h.toLowerCase().includes('lon'));
       
-      // Index Rigid mengikut arahan
       const colKod = globalHeaders[1];   // Kolum B
       const colJenis = globalHeaders[3]; // Kolum D
       const colNama = globalHeaders[6];  // Kolum G
@@ -328,14 +330,12 @@
         if(lat && lng && !isNaN(lat) && !isNaN(lng)) {
           let namaTertentu = item[colNama] || "Tiada Nama Didaftarkan";
           
-          // Profil Moden
           let popupContent = `<div class="p-1.5 min-w-[220px] max-w-[300px]">`;
           popupContent += `<h4 class="font-black text-[13px] text-blue-900 border-b-2 border-blue-200 pb-1.5 mb-2">${namaTertentu}</h4>`;
           
           if(colKod) popupContent += `<div class="mb-1 bg-gray-50 px-1 py-0.5 rounded"><span class="text-[10px] font-extrabold text-blue-700 uppercase">Kod:</span> <span class="text-[11px] font-bold text-gray-800">${item[colKod] || "-"}</span></div>`;
           if(colJenis) popupContent += `<div class="mb-2 bg-gray-50 px-1 py-0.5 rounded"><span class="text-[10px] font-extrabold text-orange-600 uppercase">Jenis:</span> <span class="text-[11px] font-bold text-gray-800">${item[colJenis] || "-"}</span></div>`;
 
-          // Ciri Tambahan Carian Dinamik
           if(activeFilterKeysSet.size > 0) {
              let activeContent = ``;
              activeFilterKeysSet.forEach(key => {
@@ -350,7 +350,6 @@
 
           let markerElement = L.marker([lat, lng], {icon: getCustomIcon(markerColor)});
           
-          // Hover / Mouseover action (Khas PC) & Click (Phone)
           markerElement.bindPopup(popupContent, {maxWidth: 320, closeButton: false});
           markerElement.on('mouseover', function(e) { this.openPopup(); });
 
