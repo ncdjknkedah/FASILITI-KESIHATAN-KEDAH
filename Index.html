@@ -15,6 +15,18 @@
     .info.legend i { width: 16px; height: 16px; float: left; margin-right: 8px; margin-top: 4px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 2px rgba(0,0,0,0.5); }
     .filter-scroll::-webkit-scrollbar { width: 5px; }
     .filter-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 5px; }
+    
+    /* CSS Khas untuk Label Nama Fasiliti yang dipaparkan di peta */
+    .leaflet-tooltip.custom-map-label {
+        background-color: rgba(255, 255, 255, 0.85);
+        border: 1px solid #94a3b8;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 2px 6px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        color: #1e3a8a;
+        white-space: nowrap;
+    }
   </style>
 </head>
 <body class="bg-slate-50 min-h-screen font-sans">
@@ -69,6 +81,12 @@
 
       <!-- MAP CONTAINER -->
       <div class="lg:col-span-3 bg-white rounded-xl shadow-md p-3 relative ring-1 ring-gray-100">
+        <!-- BUTANG TOGGLE NAMA FASILITI -->
+        <div class="absolute top-6 right-6 z-[400]">
+           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-4 py-2 text-sm shadow-md rounded-md border border-gray-300 font-extrabold text-blue-800 hover:bg-gray-50 transition cursor-pointer">
+              🏷️ Papar Nama Fasiliti
+           </button>
+        </div>
         <div id="map"></div>
       </div>
     </div>
@@ -79,7 +97,7 @@
 
   <script>
     // =========================================================
-    // PERHATIAN: Masukkan Google Web App URL /exec yang baru anda deploy di sini!!
+    // PERHATIAN: Masukkan Google Web App URL /exec anda
     // =========================================================
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSnsWfD4PKkfA-7I0FCHycgohAzrOWgdbfe8VcDKahCRemdy5OQDNhcCkz8JUY4TuD-Q/exec"; 
 
@@ -91,6 +109,10 @@
     
     let categoryColorMap = {}; let legendControl;
     let groupCount = 0; let rowCount = 0;
+    
+    // Status visual map terkini
+    let isLabelVisible = false;
+    let activeFilterKeysSet = new Set(); // Kenalpasti Lajur/Kolum yang diguna pakai dalam carian
 
     function initMap() {
       map = L.map('map').setView([6.1184, 100.3685], 9);
@@ -119,11 +141,9 @@
       groupCount++;
       let container = document.getElementById('dynamic-groups-container');
       let groupId = `group-id-${groupCount}`;
-      
       let orDivider = groupCount > 1 ? `<div class="text-center my-2 text-xs font-bold text-gray-400">----- ATAU (OR) -----</div>` : '';
       let groupWrapper = document.createElement('div');
-      groupWrapper.id = groupId;
-      groupWrapper.className = "filter-group-block";
+      groupWrapper.id = groupId; groupWrapper.className = "filter-group-block";
       
       let html = `
         ${orDivider}
@@ -136,8 +156,6 @@
       `;
       groupWrapper.innerHTML = html;
       container.appendChild(groupWrapper);
-      
-      // Auto masukan 1 row syarat di dalam group baru
       addRow(groupId);
     }
 
@@ -146,10 +164,8 @@
       const rowId = `filter-row-${rowCount}`;
       let rowContainer = document.getElementById(`${groupId}-rows`);
       let totalRowsInGroup = rowContainer.children.length;
-      
       let wrapper = document.createElement('div');
-      wrapper.id = rowId;
-      wrapper.className = "filter-row-item pl-2 border-l-2 border-blue-200 relative";
+      wrapper.id = rowId; wrapper.className = "filter-row-item pl-2 border-l-2 border-blue-200 relative";
       let deleteBtn = totalRowsInGroup > 0 ? `<button onclick="document.getElementById('${rowId}').remove()" class="absolute top-0 right-0 text-red-400 font-bold hover:text-red-600 text-lg">×</button>` : '';
       let andLabel = totalRowsInGroup > 0 ? `<div class="text-[10px] text-blue-500 font-bold absolute -left-[14px] top-4 bg-white px-0.5">DAN</div>` : '';
 
@@ -157,8 +173,7 @@
       ALLOWED_FILTER_INDICES.forEach(index => { if(globalHeaders[index]) colOptionsHTML += `<option value="${index}">${globalHeaders[index]}</option>`; });
 
       wrapper.innerHTML = `
-        ${andLabel}
-        ${deleteBtn}
+        ${andLabel} ${deleteBtn}
         <select class="w-full text-xs rounded-md bg-gray-50 border-gray-300 shadow-inner p-1.5 mb-2 border focus:ring-blue-500 filter-target-col font-semibold text-gray-700" onchange="updateFilterValues(this, '${rowId}')">
           ${colOptionsHTML}
         </select>
@@ -176,7 +191,6 @@
       
       let headerName = globalHeaders[colIndex];
       let uniqueValues = [...new Set(globalData.map(d => d[headerName]).filter(d => d))].sort();
-      
       let html = `<div class="space-y-1">
         <label class="flex items-center space-x-2 text-[11px] font-bold text-blue-700 border-b border-gray-200 pb-1 mb-1 cursor-pointer hover:bg-blue-50 px-1 rounded">
           <input type="checkbox" class="rounded" onchange="toggleAllCheckboxes(this, '${rowId}')"> <span>PILIH SEMUA</span>
@@ -187,16 +201,28 @@
             <input type="checkbox" value="${v}" class="filter-chk rounded border-gray-300"><span>${v}</span>
           </label>`; 
       });
-      valContainer.innerHTML = html + `</div>`;
-      valContainer.classList.add("bg-white");
+      valContainer.innerHTML = html + `</div>`; valContainer.classList.add("bg-white");
     }
 
     function toggleAllCheckboxes(masterCheckbox, rowId) { document.querySelectorAll(`#${rowId} .filter-chk`).forEach(cb => cb.checked = masterCheckbox.checked); }
     function resetFilters() { document.getElementById('dynamic-groups-container').innerHTML = ''; groupCount = 0; addGroup(); applyFilters(); }
+    
+    function toggleNamaFasiliti() {
+        isLabelVisible = !isLabelVisible;
+        let btn = document.getElementById("toggle-label-btn");
+        if(isLabelVisible) {
+            btn.innerHTML = `🚫 Sembunyikan Nama`;
+            btn.classList.add("text-red-700", "bg-red-50"); btn.classList.remove("text-blue-800", "bg-white");
+        } else {
+            btn.innerHTML = `🏷️ Papar Nama Fasiliti`;
+            btn.classList.remove("text-red-700", "bg-red-50"); btn.classList.add("text-blue-800", "bg-white");
+        }
+        applyFilters(); // Rerender marker dengan text
+    }
 
-    // --- ENJIN CARIAN (OR / AND LOGIC) ---
     function applyFilters() {
-      let filterGroupsRules = []; // Struktur: [ [syarat1, syarat2], [syarat3] ]
+      let filterGroupsRules = []; 
+      activeFilterKeysSet.clear(); // Set semula kolum tapisan digunapakai
       
       document.querySelectorAll('.filter-group-block').forEach((groupDiv, gIndex) => {
         let conditions = [];
@@ -205,7 +231,9 @@
           if(colIndex !== "") {
             let checkedBoxes = Array.from(row.querySelectorAll('.filter-chk:checked')).map(cb => cb.value);
             if(checkedBoxes.length > 0) {
-              conditions.push({ colIndex: parseInt(colIndex), key: globalHeaders[colIndex], values: checkedBoxes });
+              let keyName = globalHeaders[colIndex];
+              conditions.push({ colIndex: parseInt(colIndex), key: keyName, values: checkedBoxes });
+              activeFilterKeysSet.add(keyName); // Rakam bahawa kolum ini ditapis
             }
           }
         });
@@ -213,39 +241,22 @@
       });
 
       let filteredData = globalData;
-      
-      // Jika ada rules, jalankan saringan
       if (filterGroupsRules.length > 0) {
-        filteredData = globalData.filter(item => {
-          // data lulus jika ia sepadan dengan **SEKURANG-KURANGNYA SATU** Kumpulan (Logik ATAU)
-          return filterGroupsRules.some(group => {
-             // didalam kumpulan, ia ditapis secara Logik DAN
-             return group.rules.every(f => f.values.includes(item[f.key]));
-          });
-        });
+        filteredData = globalData.filter(item => { return filterGroupsRules.some(group => { return group.rules.every(f => f.values.includes(item[f.key])); }); });
       }
 
-      // Kategori Gabungan Dinamik untuk Warna Titik & Legend berdasarkan "Kumpulan"
       const generateCombinedKey = (item) => {
         if (filterGroupsRules.length === 0) return item[globalHeaders[3] || globalHeaders[1]]; 
-        
-        // Cari dari Kumpulan mana data ini 'LULUS'? Kita petakan namanya berdasarkan itu.
         for (let group of filterGroupsRules) {
             let passedGroup = group.rules.every(f => f.values.includes(item[f.key]));
-            if (passedGroup) {
-                // Namakan warna titik mengikut gabungan Kolum dari Grup itu sahaja
-                return group.rules.map(f => item[f.key]).join(" | ");
-            }
+            if (passedGroup) return group.rules.map(f => item[f.key]).join(" | ");
         }
         return "Lain-lain";
       };
 
       let uniqueShowingTypes = [...new Set(filteredData.map(d => generateCombinedKey(d)).filter(d => d))].sort();
-
       categoryColorMap = {};
-      uniqueShowingTypes.forEach((type, index) => {
-        categoryColorMap[type] = { colorName: baseColors[index % baseColors.length], hex: hexColors[index % hexColors.length] };
-      });
+      uniqueShowingTypes.forEach((type, index) => { categoryColorMap[type] = { colorName: baseColors[index % baseColors.length], hex: hexColors[index % hexColors.length] }; });
 
       renderMapMarkers(filteredData, generateCombinedKey);
     }
@@ -254,6 +265,11 @@
       markersLayer.clearLayers();
       const latCol = globalHeaders.find(h => h.toLowerCase().includes('lat'));
       const longCol = globalHeaders.find(h => h.toLowerCase().includes('log') || h.toLowerCase().includes('lon'));
+      
+      // Auto-Kesan Kolum Penting Profile
+      const colDaerah = globalHeaders.find(h => h.toLowerCase().includes('daerah'));
+      const colJenis = globalHeaders.find(h => h.toLowerCase().includes('jenis'));
+      const colNama = globalHeaders.find(h => h.toLowerCase().includes('titik') || h.toLowerCase().includes('fasiliti') || h.toLowerCase().includes('nama')); 
 
       data.forEach(item => {
         let lat = item[latCol], lng = item[longCol];
@@ -261,22 +277,58 @@
         let markerColor = categoryColorMap[catValue] ? categoryColorMap[catValue].colorName : 'blue';
         
         if(lat && lng && !isNaN(lat) && !isNaN(lng)) {
-          let popupContent = `<div class="p-2 min-w-[280px] max-w-[320px] max-h-[300px] overflow-y-auto filter-scroll">`;
-          popupContent += `<h4 class="font-extrabold text-[15px] text-blue-900 border-b-2 border-blue-100 pb-2 mb-3">Maklumat Fasiliti</h4>`;
-          globalHeaders.forEach(header => {
-            if(item[header] && !header.toLowerCase().includes('lat') && !header.toLowerCase().includes('log')) {
-                popupContent += `<div class="mb-2"><span class="text-xs font-bold text-gray-400 uppercase leading-tight block">${header}</span> <span class="text-sm font-semibold text-gray-800">${item[header]}</span></div>`;
-            }
-          });
-          L.marker([lat, lng], {icon: getCustomIcon(markerColor)})
-            .bindPopup(popupContent + `</div>`, {maxWidth: 350}).addTo(markersLayer);
+          
+          // ---- PEMBINAAN KANDUNGAN PROFAIL FASILITI DINAMIK ----
+          let namaFasilitiActual = colNama && item[colNama] ? item[colNama] : "Tiada Nama";
+          
+          let popupContent = `<div class="p-2 min-w-[250px] max-w-[320px]">`;
+          popupContent += `<h4 class="font-extrabold text-[15px] text-blue-900 border-b-2 border-blue-100 pb-2 mb-3 shadow-[0_4px_2px_-2px_rgba(0,0,0,0.05)]">${namaFasilitiActual}</h4>`;
+          
+          // Profil Kekal (Daerah & Jenis Fasiliti)
+          if(colDaerah && item[colDaerah]) {
+             popupContent += `<div class="mb-1"><span class="text-[11px] font-bold text-gray-500 uppercase">Daerah:</span> <span class="text-[13px] font-semibold text-gray-800">${item[colDaerah]}</span></div>`;
+          }
+          if(colJenis && item[colJenis]) {
+             popupContent += `<div class="mb-3"><span class="text-[11px] font-bold text-gray-500 uppercase">Kategori:</span> <span class="text-[13px] font-semibold text-gray-800">${item[colJenis]}</span></div>`;
+          }
+
+          // Profail Dinamik Pilihan Pengguna (Contoh: Menambah 'Mesin Fundus Kamera' jika ia salah satu tapisan yang digunakan / dicari)
+          if(activeFilterKeysSet.size > 0) {
+             let adaExtraInfo = false;
+             let extraContent = `<div class="mt-3 pt-2 border-t border-dashed border-gray-300">`; // Kotak pengasingan
+             
+             activeFilterKeysSet.forEach(key => {
+                 // Hanya tunjukkan key itu kalau ia BUKAN Daerah/Jenis/Nama (Sebab yang tu dah tunjuk di atas)
+                 if(key !== colDaerah && key !== colJenis && key !== colNama) {
+                     adaExtraInfo = true;
+                     let val = item[key] ? item[key] : "Tiada Rekod";
+                     extraContent += `<div class="mb-1"><span class="text-[11px] font-bold text-blue-700 uppercase">${key}</span> <br><span class="text-[13px] text-gray-800">${val}</span></div>`;
+                 }
+             });
+             extraContent += `</div>`;
+             
+             if(adaExtraInfo) {
+                popupContent += extraContent;
+             }
+          }
+          popupContent += `</div>`;
+
+          // Cipta Penanda / Marker
+          let markerElement = L.marker([lat, lng], {icon: getCustomIcon(markerColor)});
+          
+          // Togol Nama Paparan Terapung berdekatan Marker
+          if(isLabelVisible && namaFasilitiActual !== "Tiada Nama") {
+              markerElement.bindTooltip(namaFasilitiActual, {
+                  permanent: true, direction: "right", offset: [8, -15], className: "custom-map-label"
+              });
+          }
+
+          markerElement.bindPopup(popupContent, {maxWidth: 350}).addTo(markersLayer);
         }
       });
       
       updateLegend(activeFiltersExist = categoryColorMap);
-      
-      let el = document.getElementById('stat-total');
-      el.innerText = data.length; el.classList.add("scale-125"); setTimeout(()=> el.classList.remove("scale-125"), 200);
+      let el = document.getElementById('stat-total'); el.innerText = data.length; el.classList.add("scale-125"); setTimeout(()=> el.classList.remove("scale-125"), 200);
     }
 
     function getCustomIcon(colorName) {
@@ -285,12 +337,12 @@
 
     function updateLegend() {
       let div = document.getElementById('map-legend');
-      let html = `<h4 class="font-extrabold text-sm text-gray-800 border-b border-gray-200 pb-1 mb-2 tracking-wide uppercase">Petunjuk Semasa</h4>`;
+      let html = `<h4 class="font-extrabold text-[12px] text-gray-800 border-b border-gray-200 pb-1 mb-2 tracking-wide uppercase">Petunjuk Semasa</h4>`;
       let keys = Object.keys(categoryColorMap);
-      if(keys.length === 0) html += `<p class="text-xs italic text-gray-500 mt-2">Tiada Data Bertepatan</p>`;
+      if(keys.length === 0) html += `<p class="text-[10px] italic text-gray-500 mt-2">Tiada Data Bertepatan</p>`;
       else {
-        html += `<div class="space-y-1.5 mt-2">`;
-        for (let key in categoryColorMap) html += `<div class="flex items-start"><i style="background: ${categoryColorMap[key].hex}"></i> <span class="text-[11px] font-semibold text-gray-700 leading-tight mt-0.5">${key}</span></div>`;
+        html += `<div class="space-y-1 mt-2">`;
+        for (let key in categoryColorMap) html += `<div class="flex items-start"><i style="background: ${categoryColorMap[key].hex}"></i> <span class="text-[10px] font-bold text-gray-600 mt-0.5">${key}</span></div>`;
         html += `</div>`;
       }
       div.innerHTML = html;
@@ -299,6 +351,7 @@
     async function loadSettings() {
       try { let response = await fetch(`${APPS_SCRIPT_URL}?action=getSettings`); let res = await response.json(); if(res.shapefileLink) omnivore.geojson(res.shapefileLink, null, L.geoJson(null, {style: { color: "#3B82F6", weight: 2, fillOpacity: 0.2 }})).addTo(shapeLayer); } catch(e) {}
     }
+    
     async function openSettings() {/* Swal function retained same as before */}
 
     window.onload = initMap;
