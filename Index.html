@@ -10,14 +10,10 @@
   
   <style>
     body { overflow: hidden; font-family: ui-sans-serif, system-ui, sans-serif; }
-    .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
     .filter-scroll::-webkit-scrollbar { width: 6px; }
     .filter-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 6px; }
     
-    .leaflet-tooltip.custom-map-label {
-        background-color: rgba(255, 255, 255, 0.95); border: 1px solid #64748b;
-        font-size: 11px; font-weight: 800; padding: 4px 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); color: #1e3a8a; white-space: nowrap;
-    }
+    .leaflet-tooltip.custom-map-label { background-color: rgba(255, 255, 255, 0.95); border: 1px solid #64748b; font-size: 11px; font-weight: 800; padding: 4px 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); color: #1e3a8a; white-space: nowrap; }
     
     #draggable-tools { position: absolute; bottom: 20px; right: 20px; z-index: 1000; cursor: grab; display: flex; flex-direction: column; gap: 8px; }
     #draggable-tools:active { cursor: grabbing; }
@@ -27,9 +23,16 @@
     
     #sidebar { transition: margin-left 0.3s ease-in-out; }
     .sidebar-hidden { margin-left: -350px; }
+    
+    /* Tetingkap Modal Pentadbir Terapung */
+    #admin-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; items-center: center; }
+    .modal-content-scale { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes modalPop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
   </style>
 </head>
-<body class="bg-slate-50 min-h-screen flex flex-col">
+<body class="bg-slate-50 min-h-screen flex flex-col relative">
+
+  <!-- Navigasi -->
   <nav class="bg-blue-900 text-white shadow-lg flex-shrink-0 z-50 h-[60px]">
     <div class="w-full px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-[60px] items-center">
@@ -37,8 +40,8 @@
           <span class="mr-2">🌍</span> Geo-Fasiliti Kedah
         </div>
         <div>
-          <button onclick="openSettings()" class="bg-blue-700 hover:bg-blue-600 px-3 py-1.5 rounded-md transition shadow text-xs font-semibold border border-blue-500">
-            ⚙️ <span class="hidden sm:inline">Tetapan</span>
+          <button onclick="openAdminModal()" class="bg-white text-blue-900 hover:bg-gray-100 px-3 py-1.5 rounded-md transition shadow text-[10px] sm:text-xs font-black border border-gray-300">
+            ⚙️ <span class="hidden sm:inline uppercase">Pentadbir Sistem</span>
           </button>
         </div>
       </div>
@@ -64,55 +67,128 @@
       </div>
     </div>
 
-    <div class="flex flex-grow min-h-0 gap-4 relative">
-      <!-- SIDEBAR -->
-      <div id="sidebar" class="w-[330px] flex-shrink-0 glass rounded-xl shadow-[0_4px_15px_rgba(0,0,0,0.1)] border border-gray-200 flex flex-col z-20 h-full">
-        <div class="flex justify-between items-center border-b p-3 bg-white rounded-t-xl">
+    <!-- Sistem Utama Berpusat: Panel Kiri & Peta Kanan -->
+    <div class="flex flex-grow min-h-0 gap-4 relative w-full">
+      
+      <!-- KOTAK PANEL SIDEBAR -->
+      <div id="sidebar" class="w-[330px] flex-shrink-0 bg-white/95 backdrop-blur rounded-xl shadow-[0_4px_15px_rgba(0,0,0,0.1)] border border-gray-200 flex flex-col z-20 h-full">
+        <div class="flex justify-between items-center border-b p-3 bg-gray-50 rounded-t-xl">
            <div>
-               <h3 class="font-extrabold text-[15px] text-gray-800 leading-none">Pengurus Carian</h3>
-               <p class="text-[10px] text-gray-500 mt-1">Sistem Filter Pintar</p>
+               <h3 class="font-extrabold text-[15px] text-gray-800 leading-none">Pengurus Peta</h3>
+               <p class="text-[10px] text-gray-500 mt-1">Sistem Tapisan Pintar</p>
            </div>
-           <button onclick="toggleSidebar()" class="text-gray-400 hover:text-red-500 hover:bg-gray-100 p-1.5 rounded-lg transition" title="Sorok Sidebar">
+           <button onclick="toggleSidebar()" class="text-gray-400 hover:text-red-500 hover:bg-gray-200 p-1.5 rounded transition" title="Sorok Sidebar">
                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
            </button>
         </div>
         
+        <!-- Pilihan Overlay Sempadan (Shapefile) -->
+        <div class="bg-blue-50/50 p-2.5 border-b border-blue-100">
+           <h4 class="text-[10px] font-extrabold text-blue-900 mb-1.5 uppercase tracking-wide">LAYAR SEMPADAN (SHAPEFILE)</h4>
+           <div id="public-shapefile-list" class="space-y-1.5 max-h-[80px] overflow-y-auto filter-scroll">
+              <p class="text-[9px] text-gray-400 italic">Memuat maklumat pentadbir...</p>
+           </div>
+        </div>
+        
+        <!-- Zon Skroll Kumpulan Carian -->
         <div class="overflow-y-auto filter-scroll p-3 flex-grow" id="dynamic-groups-container"></div>
         
-        <div class="px-3 pb-2 pt-1 border-t border-gray-100">
-            <button onclick="addGroup()" class="w-full border-2 border-dashed border-blue-300 bg-blue-50 text-blue-700 py-2 rounded-md hover:bg-blue-100 font-extrabold text-[11px] transition shadow-sm">
+        <!-- Butang Tambah Group -->
+        <div class="px-3 pb-2 pt-1">
+            <button onclick="addGroup()" class="w-full border-2 border-dashed border-blue-300 bg-blue-50 text-blue-700 py-2 rounded-md hover:bg-blue-100 font-extrabold text-[11px] transition">
                 ➕ TAMBAH KUMPULAN (OR)
             </button>
         </div>
 
+        <!-- Butang Aksi -->
         <div class="p-3 border-t border-gray-200 bg-white rounded-b-xl grid grid-cols-2 gap-2">
-          <button onclick="applyFilters()" class="col-span-2 bg-blue-700 text-white py-2 rounded-md hover:bg-blue-800 transition shadow-md font-extrabold tracking-wide text-xs">🔍 CARI DI PETA</button>
+          <button onclick="applyFilters()" class="col-span-2 bg-blue-700 text-white py-2 rounded-md hover:bg-blue-800 transition shadow font-extrabold tracking-wide text-xs">🔍 CARI DI PETA</button>
           <button onclick="resetFilters()" class="col-span-2 bg-gray-100 text-gray-700 py-1.5 rounded-md hover:bg-gray-200 transition font-bold border border-gray-300 text-[10px]">♻️ RESET</button>
         </div>
       </div>
 
-      <button id="show-sidebar-btn" onclick="toggleSidebar()" class="hidden absolute top-4 left-0 z-30 bg-blue-900 text-white p-2 text-xl rounded-r-lg shadow-[4px_0_10px_rgba(0,0,0,0.3)] hover:bg-blue-800 transition border-y border-r border-blue-500">
-         <span>&gt;</span>
+      <!-- KOTAK PETA -->
+      <!-- Butang Buka Sidebar -->
+      <button id="show-sidebar-btn" onclick="toggleSidebar()" class="hidden absolute top-4 left-0 z-30 bg-blue-900 text-white p-2 rounded-r-lg shadow-[4px_0_10px_rgba(0,0,0,0.3)] hover:bg-blue-800 transition border-y border-r border-blue-500">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
       </button>
 
-      <!-- PETA -->
       <div class="flex-grow bg-white rounded-xl shadow-md relative ring-1 ring-gray-200 overflow-hidden h-full z-10 w-full">
+        <!-- Peta Leaflet Berada Didalam ni -->
         <div id="map" class="w-full h-full"></div>
 
+        <!-- ALAT KAWALAN PETA BOLEH SERET / SOROK -->
         <div id="draggable-tools">
-           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 hover:bg-gray-50 transition w-full text-center">
+           <!-- Butang Papar Nama -->
+           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 transition w-full text-center">
               🏷️ PAPAR NAMA
            </button>
+           
+           <!-- Kotak Lagend -->
            <div class="legend-box group">
                <div class="flex justify-between items-center border-b border-gray-200 pb-1 mb-2">
-                  <h4 class="font-extrabold text-[11px] text-gray-800 uppercase tracking-wide cursor-grab active:cursor-grabbing">Petunjuk Semasa</h4>
-                  <button onclick="toggleLegendContent()" class="text-xs text-blue-500 font-extrabold bg-blue-50 w-[24px] h-[24px] hover:bg-blue-200 rounded border border-blue-200">-</button>
+                  <h4 class="font-extrabold text-[11px] text-gray-800 uppercase tracking-wide" style="cursor: grab;">Petunjuk Semasa</h4>
+                  <button onclick="toggleLegendContent()" class="text-xs text-blue-500 font-extrabold p-1 w-6 h-6 hover:bg-blue-50 rounded" title="Sorok/Buka Menu">-</button>
                </div>
-               <div id="legend-content" class="space-y-1.5 transition-all max-h-[150px] overflow-y-auto filter-scroll pr-1"></div>
+               <div id="legend-content" class="space-y-1.5 transition-all max-h-[150px] overflow-y-auto filter-scroll pr-1">
+                  <p class="text-[10px] text-gray-400 italic">Sila muat turun ruang pangkalan</p>
+               </div>
            </div>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL KHAS: PENTADBIR (PILIH KOLUM & SHAPEFILE) -->
+  <!-- ============================================== -->
+  <div id="admin-modal-overlay" class="flex items-center">
+      <div class="bg-white rounded-xl shadow-2xl w-[90%] max-w-[650px] max-h-[90vh] flex flex-col modal-content-scale relative overflow-hidden ring-4 ring-blue-500/30">
+          
+          <div class="p-4 bg-blue-900 text-white flex justify-between items-center border-b border-blue-800 flex-shrink-0">
+             <div>
+                <h2 class="font-black tracking-widest uppercase text-sm">Pusat Kawalan Pentadbir WebGIS</h2>
+                <p class="text-[10px] text-blue-200 mt-1 italic">Susunan ini akan disimpan pada pangkalan Cloud secara kekal.</p>
+             </div>
+             <button onclick="closeAdminModal()" class="text-white hover:text-red-400 bg-blue-800 hover:bg-blue-700 p-1.5 rounded transition">✖</button>
+          </div>
+
+          <!-- Kata Laluan Mask -->
+          <div id="admin-auth-panel" class="p-8 flex flex-col items-center justify-center flex-grow bg-slate-50">
+             <div class="text-[4rem] mb-2 text-blue-800">🔐</div>
+             <p class="text-xs font-bold text-gray-600 uppercase tracking-widest mb-4">Pengesahan Pentadbir</p>
+             <input type="password" id="admin-pwd" placeholder="Masukkan Kata Laluan..." class="w-full max-w-[300px] p-2.5 border-2 border-gray-300 rounded focus:border-blue-500 text-center font-bold tracking-widest">
+             <button onclick="verifyAdmin()" class="mt-4 bg-blue-700 text-white px-6 py-2 rounded font-extrabold uppercase text-xs shadow hover:bg-blue-800">Sahkan Akses</button>
+          </div>
+
+          <!-- KANDUNGAN TETAPAN (Tersembunyi Awalnya) -->
+          <div id="admin-settings-panel" class="hidden flex-col flex-grow overflow-hidden bg-slate-50">
+             <div class="p-4 overflow-y-auto filter-scroll flex-grow">
+                 
+                 <!-- Bahagian 1: Senarai Shapefile -->
+                 <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="font-black text-blue-800 text-xs mb-2 uppercase border-b pb-1">1. Ruang Shapefile Peta (.GeoJSON)</h3>
+                    <p class="text-[10px] text-gray-500 mb-3">Masukkan nama dan pautan URL *raw* bagi bentuk sempadan. Pengguna awam akan boleh mengaktifkan garisan ini pada Peta mereka.</p>
+                    <div id="admin-shapefile-list" class="space-y-2 mb-3"></div>
+                    <button onclick="addAdminShapefileRow()" class="text-[10px] bg-blue-50 text-blue-700 font-extrabold px-3 py-1.5 rounded border border-blue-200 hover:bg-blue-100">+ Tambah Sempadan Baru</button>
+                 </div>
+
+                 <!-- Bahagian 2: Pilihan Kolum Dinamik -->
+                 <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="font-black text-blue-800 text-xs mb-2 uppercase border-b pb-1">2. Penentuan Lajur Carian Dibenarkan</h3>
+                    <p class="text-[10px] text-gray-500 mb-3">Klik pada Kolum yang *AKAN KELUAR* di Menu Filter Pengguna Awam. (Jika lajur baharu di Google Sheet diwujudkan kelak, Admin harus masuk ke sini semula untuk membubuh tanda right).</p>
+                    <div id="admin-columns-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                       <!-- Checkbox Kolum Disenaraikan Disini -->
+                    </div>
+                 </div>
+             </div>
+
+             <div class="p-3 bg-red-50/20 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
+                <button onclick="closeAdminModal()" class="px-4 py-2 bg-gray-200 font-bold text-gray-700 text-xs rounded hover:bg-gray-300">Batal</button>
+                <button onclick="saveAdminSettings()" class="px-5 py-2 bg-green-600 font-extrabold text-white text-xs rounded shadow-lg hover:bg-green-700 uppercase">💾 Simpan Susunan Ke Pangkalan</button>
+             </div>
+          </div>
+      </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -122,12 +198,16 @@
     // =========================================================
     // PERHATIAN: Masukkan Google Web App URL /exec anda
     // =========================================================
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwSnsWfD4PKkfA-7I0FCHycgohAzrOWgdbfe8VcDKahCRemdy5OQDNhcCkz8JUY4TuD-Q/exec"; 
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLJxE-ZTfCNQgnktQLGicCmXZvjiQKSyH79EbC7NnrTZsdf7613mHS9E--nVwf5Yd6mA/exec"; 
 
-    let map; let markersLayer = new L.LayerGroup(); let shapeLayer = new L.LayerGroup();
+    let map; let markersLayer = L.layerGroup(); 
     let globalData = []; let globalHeaders = [];
     
-    const ALLOWED_FILTER_INDICES = [3, 5, 6, 12, 13, 14, 15]; 
+    // VARIABLES PENTADBIR
+    let dynamicAllowedFilterIndices = []; 
+    let dynamicShapefilesList = []; 
+    let activeShapeLayers = {}; // Simpan status on/off layer pengguna
+    
     const baseColors = ['blue', 'red', 'green', 'orange', 'violet', 'gold', 'yellow', 'grey', 'black', 'blue'];
     const hexColors = ['#2A81CB', '#CB2B3E', '#2AAD27', '#CB8427', '#9C2BCB', '#FFD326', '#CAC428', '#7B7B7B', '#3D3D3D', '#2A81CB'];
     
@@ -139,37 +219,47 @@
       L.control.zoom({ position: 'topleft' }).addTo(map);
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© JKN Kedah', maxZoom: 18 }).addTo(map);
-      markersLayer.addTo(map); shapeLayer.addTo(map);
+      markersLayer.addTo(map);
 
       let toolsEl = document.getElementById('draggable-tools');
       let draggable = new L.Draggable(toolsEl); draggable.enable();
       L.DomEvent.disableClickPropagation(toolsEl); L.DomEvent.disableScrollPropagation(toolsEl);
 
       window.addEventListener('resize', ()=> { map.invalidateSize(); });
-      loadData(); loadSettings();
+      
+      initFullLoad();
     }
 
-    async function loadData() {
+    async function initFullLoad() {
+      Swal.fire({title: 'Memuatkan GIS...', text: "Mengambil data berpusat...", allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
+      
       try {
-        Swal.fire({title: 'Memuat turun data...', text: "Tunggu sebentar", allowOutsideClick: false}); Swal.showLoading();
-        let response = await fetch(`${APPS_SCRIPT_URL}?action=getData`);
-        let res = await response.json();
-        if (res.error) throw new Error(res.error);
-        if(!res.data || res.data.length === 0) throw new Error("Data Kosong / Spreadsheet Error");
-        
-        globalData = res.data; globalHeaders = res.headers;
+        // Ambil Data Sheet
+        let resData = await fetch(`${APPS_SCRIPT_URL}?action=getData`).then(r => r.json());
+        if(resData.error) throw new Error(resData.error);
+        globalData = resData.data; globalHeaders = resData.headers;
         document.getElementById('stat-total-db').innerText = globalData.length;
+
+        // Ambil Tetapan (Kolum & Shapefiles) Dari Pangkalan Cloud Admin
+        let resSet = await fetch(`${APPS_SCRIPT_URL}?action=getSettings`).then(r => r.json());
+        
+        dynamicAllowedFilterIndices = resSet.allowedFilters || [];
+        dynamicShapefilesList = resSet.shapefiles || [];
+
+        renderPublicShapefileList();
+        
+        // Setup Filter Ui Pertama Kali
         addGroup(); applyFilters(); Swal.close();
-      } catch (e) { Swal.fire("Ralat", e.toString(), "error"); }
+      } catch (e) { Swal.fire("Ralat Maut", e.toString(), "error"); }
     }
 
+    // --- PEMBINAAN KUMPULAN PENAPISAN ---
     function addGroup() {
       groupCount++;
       let container = document.getElementById('dynamic-groups-container');
       let groupId = `group-id-${groupCount}`;
       let groupWrapper = document.createElement('div');
       groupWrapper.id = groupId; 
-      // PEMBETULAN KRITIKAL DI SINI: MEMBANTU APPLY FILTERS MENGENALPASTI KOTAK INI SEBAGAI FILTER BLOCK
       groupWrapper.className = "filter-group-block mb-3"; 
       
       let html = `
@@ -190,11 +280,14 @@
       let rowContainer = document.getElementById(`${groupId}-rows`);
       let wrapper = document.createElement('div');
       wrapper.id = rowId; 
-      // KELAS DIPERLUKAN: "filter-row-item"
       wrapper.className = "filter-row-item pl-2 border-l-[3px] border-blue-400 relative bg-white px-2 py-2 shadow-sm rounded-r-md border border-gray-100";
       let deleteBtn = rowContainer.children.length > 0 ? `<button onclick="document.getElementById('${rowId}').remove()" class="absolute -top-1 -right-1 text-red-400 font-black hover:text-red-600 text-lg">×</button>` : '';
-      let colOptionsHTML = `<option value="">- Lajur Pangkalan -</option>`;
-      ALLOWED_FILTER_INDICES.forEach(index => { if(globalHeaders[index]) colOptionsHTML += `<option value="${index}">${globalHeaders[index]}</option>`; });
+      
+      let colOptionsHTML = `<option value="">- Pilih Teras Pangkalan -</option>`;
+      // Loop Melalui Tetapan Dinamik Yang ADMIN Tetapkan
+      dynamicAllowedFilterIndices.forEach(index => { 
+        if(globalHeaders[index]) colOptionsHTML += `<option value="${index}">${globalHeaders[index]}</option>`; 
+      });
       
       wrapper.innerHTML = `
         ${rowContainer.children.length > 0 ? `<div class="text-[8px] text-blue-600 font-black absolute -left-[14px] top-6 bg-blue-50 py-0.5 px-0.5 border border-blue-200 rounded">DAN</div>` : ''}
@@ -230,38 +323,22 @@
     function toggleAllCheckboxes(masterCheckbox, rowId) { document.querySelectorAll(`#${rowId} .filter-chk`).forEach(cb => cb.checked = masterCheckbox.checked); }
     function resetFilters() { document.getElementById('dynamic-groups-container').innerHTML = ''; groupCount = 0; addGroup(); applyFilters(); }
     
-    // --- ANIMASI BUKA/TUTUP SIDEBAR ---
+    // --- AKSI PAPARAN ANTARA MUKA ---
     function toggleSidebar() {
-        let sidebar = document.getElementById('sidebar');
-        let showBtn = document.getElementById('show-sidebar-btn');
-        if(sidebar.classList.contains('sidebar-hidden')) {
-            sidebar.classList.remove('sidebar-hidden');
-            showBtn.classList.add('hidden');
-        } else {
-            sidebar.classList.add('sidebar-hidden');
-            showBtn.classList.remove('hidden');
-        }
+        let sidebar = document.getElementById('sidebar'); let showBtn = document.getElementById('show-sidebar-btn');
+        if(sidebar.classList.contains('sidebar-hidden')) { sidebar.classList.remove('sidebar-hidden'); showBtn.classList.add('hidden'); } 
+        else { sidebar.classList.add('sidebar-hidden'); showBtn.classList.remove('hidden'); }
         setTimeout(() => { map.invalidateSize(); }, 350);
     }
-
-    function toggleLegendContent() {
-       let content = document.getElementById("legend-content");
-       content.style.display = content.style.display === "none" ? "block" : "none";
-    }
-
+    function toggleLegendContent() { let c = document.getElementById("legend-content"); c.style.display = c.style.display === "none" ? "block" : "none"; }
     function toggleNamaFasiliti() {
-        isLabelVisible = !isLabelVisible;
-        let btn = document.getElementById("toggle-label-btn");
-        if(isLabelVisible) {
-            btn.innerHTML = `🚫 SOROK NAMA`;
-            btn.className = "px-4 py-2 text-xs shadow-[0_3px_10px_rgba(220,38,38,0.4)] rounded-md border-2 border-red-700 font-black text-white bg-red-600 transition w-full text-center hover:bg-red-700 cursor-pointer";
-        } else {
-            btn.innerHTML = `🏷️ PAPAR NAMA`;
-            btn.className = "bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 transition w-full text-center hover:bg-gray-100 cursor-pointer";
-        }
+        isLabelVisible = !isLabelVisible; let btn = document.getElementById("toggle-label-btn");
+        if(isLabelVisible) { btn.innerHTML = `🚫 SOROK NAMA`; btn.className = "px-4 py-2 text-xs shadow-[0_3px_10px_rgba(220,38,38,0.4)] rounded-md border-2 border-red-700 font-black text-white bg-red-600 transition w-full text-center hover:bg-red-700 cursor-pointer"; } 
+        else { btn.innerHTML = `🏷️ PAPAR NAMA`; btn.className = "bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 transition w-full text-center hover:bg-gray-100 cursor-pointer"; }
         applyFilters(); 
     }
 
+    // --- ENJIN CARIAN PERANTI ---
     function applyFilters() {
       let filterGroupsRules = []; activeFilterKeysSet.clear();
       document.querySelectorAll('.filter-group-block').forEach((groupDiv, gIndex) => {
@@ -283,12 +360,7 @@
       let filteredData = globalData;
       if (filterGroupsRules.length > 0) {
         filteredData = globalData.filter(item => { 
-            return filterGroupsRules.some(group => { 
-                return group.rules.every(f => {
-                    // PENTING: Bandingkan nombor & tulisan pada keadaan (String) sepenuhnya
-                    return f.values.includes(String(item[f.key]));
-                }); 
-            }); 
+            return filterGroupsRules.some(group => { return group.rules.every(f => { return f.values.includes(String(item[f.key])); }); }); 
         });
       }
 
@@ -312,10 +384,7 @@
       markersLayer.clearLayers();
       const latCol = globalHeaders.find(h => h.toLowerCase().includes('lat'));
       const longCol = globalHeaders.find(h => h.toLowerCase().includes('log') || h.toLowerCase().includes('lon'));
-      
-      const colKod = globalHeaders[1];   // Kolum B
-      const colJenis = globalHeaders[3]; // Kolum D
-      const colNama = globalHeaders[6];  // Kolum G
+      const colKod = globalHeaders[1]; const colJenis = globalHeaders[3]; const colNama = globalHeaders[6]; 
 
       data.forEach(item => {
         let lat = item[latCol], lng = item[longCol];
@@ -340,6 +409,7 @@
              if(activeContent) popupContent += `<div class="mt-2 pt-2 border-t border-dashed border-gray-300">` + activeContent + `</div>`;
           }
           popupContent += `</div>`;
+          
           let markerElement = L.marker([lat, lng], {icon: getCustomIcon(markerColor)});
           markerElement.bindPopup(popupContent, {maxWidth: 320, closeButton: false});
           markerElement.on('mouseover', function(e) { this.openPopup(); });
@@ -358,8 +428,7 @@
     function getCustomIcon(colorName) { return new L.Icon({ iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${colorName}.png`, shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] }); }
 
     function updateLegend() {
-      let div = document.getElementById('legend-content');
-      let html = ``; let keys = Object.keys(categoryColorMap);
+      let div = document.getElementById('legend-content'); let html = ``; let keys = Object.keys(categoryColorMap);
       if(keys.length === 0) html += `<p class="text-[10px] italic text-gray-500 mt-2">Tiada Data Bertepatan</p>`;
       else {
         for (let key in categoryColorMap) {
@@ -369,10 +438,145 @@
       div.innerHTML = html;
     }
 
-    async function loadSettings() { try { let response = await fetch(`${APPS_SCRIPT_URL}?action=getSettings`); let res = await response.json(); if(res.shapefileLink) omnivore.geojson(res.shapefileLink, null, L.geoJson(null, {style: { color: "#3B82F6", weight: 2, fillOpacity: 0.2 }})).addTo(shapeLayer); } catch(e) {} }
-    async function openSettings() {/* Swal function as default */}
-    
-    window.onload = initMap;
+    // ==========================================
+    // SISTEM PENGURUSAN SHAPEFILE AWAM
+    // ==========================================
+    function renderPublicShapefileList() {
+        let container = document.getElementById('public-shapefile-list');
+        if(dynamicShapefilesList.length === 0) {
+            container.innerHTML = `<p class="text-[9px] text-gray-400 italic">Tiada lakaran dimuat naik oleh Admin.</p>`; return;
+        }
+        let html = ``;
+        dynamicShapefilesList.forEach((sf, i) => {
+            let chk = (activeShapeLayers[i] !== undefined) ? 'checked' : '';
+            html += `<label class="flex items-center space-x-2 text-[10px] font-bold text-gray-700 cursor-pointer hover:bg-blue-100 p-1 rounded transition select-none">
+               <input type="checkbox" onchange="toggleShapefile(${i}, this.checked, '${sf.url}', '${sf.color}')" class="rounded border-blue-300" ${chk}> <span class="truncate w-full">${sf.name}</span>
+            </label>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function toggleShapefile(index, isChecked, url, colorHex) {
+        if(isChecked) {
+            Swal.fire({title: "Memuat Peta Bentuk...", toast:true, position: "top-end", showConfirmButton: false, timer: 1500});
+            // Gunakan omnivore untuk Parse URL Geojson
+            let customStyle = { color: colorHex, weight: 2, fillOpacity: 0.15 };
+            let layerObj = omnivore.geojson(url, null, L.geoJson(null, {style: customStyle}));
+            layerObj.addTo(map);
+            activeShapeLayers[index] = layerObj; // Simpan rujukan untuk dimusnahkan nanti
+        } else {
+            if(activeShapeLayers[index]) {
+                map.removeLayer(activeShapeLayers[index]);
+                delete activeShapeLayers[index];
+            }
+        }
+    }
+
+    // ==========================================
+    // ANGGOTA TETINGKAP PENTADBIR (ADMIN UI)
+    // ==========================================
+    function openAdminModal() { document.getElementById('admin-modal-overlay').style.display = 'flex'; }
+    function closeAdminModal() { 
+        document.getElementById('admin-modal-overlay').style.display = 'none'; 
+        document.getElementById('admin-pwd').value = "";
+        document.getElementById('admin-auth-panel').classList.remove('hidden');
+        document.getElementById('admin-settings-panel').classList.add('hidden');
+        document.getElementById('admin-settings-panel').classList.remove('flex');
+    }
+
+    function verifyAdmin() {
+       let p = document.getElementById('admin-pwd').value;
+       if(p === "") return;
+       // Validasi secara Mock dahulu (Pengesahan sebenar dibuat ketika save button)
+       document.getElementById('admin-auth-panel').classList.add('hidden');
+       let panelSet = document.getElementById('admin-settings-panel');
+       panelSet.classList.remove('hidden'); panelSet.classList.add('flex');
+       buildAdminUI();
+    }
+
+    function buildAdminUI() {
+        // Bina Borang Lajur
+        let colRender = ``;
+        globalHeaders.forEach((h, i) => {
+            if(!h.toLowerCase().includes('lat') && !h.toLowerCase().includes('log')) {
+                let isChecked = dynamicAllowedFilterIndices.includes(i) ? 'checked' : '';
+                colRender += `<label class="flex items-center space-x-1 border p-1 rounded hover:bg-gray-50 text-[10px] font-bold cursor-pointer">
+                    <input type="checkbox" class="admin-col-chk" value="${i}" ${isChecked}> <span class="truncate">${h}</span>
+                </label>`;
+            }
+        });
+        document.getElementById('admin-columns-grid').innerHTML = colRender;
+
+        // Bina Borang Shapefile
+        let sfHTML = ``;
+        dynamicShapefilesList.forEach((sf, i) => {
+            sfHTML += `<div class="flex items-center gap-1 admin-sf-row bg-gray-50 p-1.5 rounded">
+                <input type="color" class="admin-sf-color w-6 h-6 p-0 border-0 cursor-pointer" value="${sf.color}">
+                <input type="text" class="admin-sf-name w-1/3 text-[10px] p-1 border rounded bg-white" value="${sf.name}" placeholder="Tajuk Menu (Cth: Blok A)">
+                <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" value="${sf.url}" placeholder="URL GeoJSON">
+                <button onclick="this.parentElement.remove()" class="text-red-500 font-black px-1.5 hover:bg-red-100 rounded text-xs">✕</button>
+            </div>`;
+        });
+        document.getElementById('admin-shapefile-list').innerHTML = sfHTML;
+    }
+
+    function addAdminShapefileRow() {
+        let container = document.getElementById('admin-shapefile-list');
+        let div = document.createElement('div');
+        div.className = "flex items-center gap-1 admin-sf-row bg-gray-50 p-1.5 rounded";
+        div.innerHTML = `<input type="color" class="admin-sf-color w-6 h-6 p-0 border-0 cursor-pointer" value="#1E3A8A">
+            <input type="text" class="admin-sf-name w-1/3 text-[10px] p-1 border rounded bg-white" placeholder="Tajuk (Cth: Hsb)">
+            <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" placeholder="Sila tampal Direct URL (.GeoJSON) di sini">
+            <button onclick="this.parentElement.remove()" class="text-red-500 font-black px-1.5 hover:bg-red-100 rounded text-xs">✕</button>`;
+        container.appendChild(div);
+    }
+
+    async function saveAdminSettings() {
+        let pwd = document.getElementById('admin-pwd').value;
+        let finalCols = [];
+        document.querySelectorAll('.admin-col-chk:checked').forEach(c => finalCols.push(parseInt(c.value)));
+        
+        let finalShapes = [];
+        document.querySelectorAll('.admin-sf-row').forEach(row => {
+            let clr = row.querySelector('.admin-sf-color').value;
+            let n = row.querySelector('.admin-sf-name').value;
+            let u = row.querySelector('.admin-sf-url').value;
+            if(n && u) finalShapes.push({name: n, url: u, color: clr});
+        });
+
+        let payloadParams = {
+            action: 'saveSetting',
+            password: pwd,
+            settingsData: { allowedFilters: finalCols, shapefiles: finalShapes }
+        };
+
+        Swal.fire({title: 'Menyimpan Di Storan Awan...', text: 'JANGAN TUTUP PELAYAR', allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
+        
+        try {
+            let req = await fetch(APPS_SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify(payloadParams),
+                headers: { "Content-Type": "text/plain;charset=utf-8" } // Pakai Text Plain utk lalui CORS GAS
+            });
+            let ans = await req.json();
+            
+            if(ans.status === "error") {
+                Swal.fire("Gagal", ans.message, "error");
+                document.getElementById('admin-pwd').value = "";
+                document.getElementById('admin-auth-panel').classList.remove('hidden');
+                document.getElementById('admin-settings-panel').classList.add('hidden');
+                document.getElementById('admin-settings-panel').classList.remove('flex');
+            } else {
+                Swal.fire("Berjaya!", ans.message, "success").then(() => {
+                    closeAdminModal();
+                    // Refresss settings variable
+                    dynamicAllowedFilterIndices = finalCols; dynamicShapefilesList = finalShapes;
+                    renderPublicShapefileList(); resetFilters();
+                });
+            }
+        } catch(e) { Swal.fire("Ralat Proses", "Kegagalan Network: " + e, "error"); }
+    }
+
   </script>
 </body>
 </html>
