@@ -2,92 +2,134 @@
 <html lang="ms">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Geo-Kesihatan Kedah</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   
   <style>
-    #map { height: 600px; width: 100%; border-radius: 0.5rem; z-index: 10; }
+    /* Ketinggian responsif Peta dan Panel mengikut peranti */
+    #map { height: 60vh; width: 100%; border-radius: 0.5rem; z-index: 10; }
+    @media (min-width: 1024px) { #map, .panel-scroll { height: 700px; } }
+    
     .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-    .info.legend { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); line-height: 24px; color: #333; max-height: 250px; overflow-y: auto; min-width: 150px; }
-    .info.legend i { width: 16px; height: 16px; float: left; margin-right: 8px; margin-top: 4px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 2px rgba(0,0,0,0.5); }
     .filter-scroll::-webkit-scrollbar { width: 5px; }
     .filter-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 5px; }
     
-    /* CSS Khas untuk Label Nama Fasiliti yang dipaparkan di peta */
+    /* CSS Khas untuk Label Nama Fasiliti Terapung */
     .leaflet-tooltip.custom-map-label {
-        background-color: rgba(255, 255, 255, 0.85);
-        border: 1px solid #94a3b8;
-        font-size: 10px;
+        background-color: rgba(255, 255, 255, 0.9);
+        border: 1px solid #64748b;
+        font-size: 11px;
         font-weight: 800;
-        padding: 2px 6px;
+        padding: 4px 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         color: #1e3a8a;
         white-space: nowrap;
     }
+    
+    /* Custom Styling untuk Legend Boleh Seret */
+    #draggable-legend {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        border: 2px solid #e2e8f0;
+        cursor: grab;
+        min-width: 140px;
+    }
+    #draggable-legend:active { cursor: grabbing; }
+    .legend-color-box { width: 14px; height: 14px; border-radius: 50%; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.4); margin-right: 6px; }
   </style>
 </head>
 <body class="bg-slate-50 min-h-screen font-sans">
+  <!-- Navigasi -->
   <nav class="bg-blue-900 text-white shadow-lg sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between h-16 items-center">
-        <div class="flex-shrink-0 flex items-center font-bold text-xl tracking-wider">🌍 Geo-Fasiliti JKN Kedah</div>
-        <div><button onclick="openSettings()" class="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded-md transition duration-300 shadow">⚙️ Tetapan Peta</button></div>
+    <div class="max-w-[95rem] mx-auto px-3 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-[60px] items-center">
+        <div class="flex-shrink-0 flex items-center font-bold text-sm sm:text-xl tracking-wider">
+          <span class="mr-2 hidden sm:block">🌍</span> Geo-Fasiliti Kedah
+        </div>
+        <div>
+          <button onclick="openSettings()" class="bg-blue-700 hover:bg-blue-600 px-3 py-1.5 sm:px-4 sm:py-2 rounded-md transition duration-300 shadow text-xs sm:text-sm font-semibold border border-blue-500">
+            ⚙️ <span class="hidden sm:inline">Tetapan</span>
+          </button>
+        </div>
       </div>
     </div>
   </nav>
 
-  <div class="max-w-[95rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6" id="stats-container">
-      <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-blue-500 flex items-center justify-between">
+  <div class="max-w-[95rem] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+    <!-- Bar Statistik Indikator -->
+    <div class="grid grid-cols-2 gap-3 sm:gap-6 mb-6" id="stats-container">
+      <div class="bg-white rounded-xl shadow-sm px-4 py-3 sm:p-6 border-l-[3px] border-blue-500 flex items-center justify-between">
         <div>
-          <h3 class="text-xs text-gray-500 uppercase font-bold tracking-wider">Fasiliti Dipaparkan</h3>
-          <p class="text-4xl font-extrabold text-blue-800 mt-1 transition-all duration-300" id="stat-total">...</p>
+          <h3 class="text-[10px] sm:text-xs text-gray-500 uppercase font-extrabold tracking-wider">Fasiliti DiPeta</h3>
+          <p class="text-2xl sm:text-4xl font-extrabold text-blue-800 mt-1 transition-all duration-300" id="stat-total">...</p>
         </div>
-        <div class="text-blue-200 text-5xl">📍</div>
+        <div class="text-blue-200 text-3xl sm:text-5xl">📍</div>
       </div>
-      <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-green-500 flex items-center justify-between">
+      <div class="bg-white rounded-xl shadow-sm px-4 py-3 sm:p-6 border-l-[3px] border-green-500 flex items-center justify-between">
         <div>
-          <h3 class="text-xs text-gray-500 uppercase font-bold tracking-wider">Fasiliti Keseluruhan</h3>
-          <p class="text-4xl font-extrabold text-green-800 mt-1" id="stat-total-db">...</p>
+          <h3 class="text-[10px] sm:text-xs text-gray-500 uppercase font-extrabold tracking-wider">Total Database</h3>
+          <p class="text-2xl sm:text-4xl font-extrabold text-green-800 mt-1" id="stat-total-db">...</p>
         </div>
-        <div class="text-green-200 text-5xl">🏢</div>
+        <div class="text-green-200 text-3xl sm:text-5xl">🏢</div>
       </div>
     </div>
 
+    <!-- Sistem Berpusat: Panel & Peta -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      <!-- PANEL KIRI: ADVANCED QUERY BUILDER -->
-      <div class="col-span-1 glass rounded-xl shadow-md p-5 border border-gray-100 flex flex-col h-[700px] overflow-y-auto filter-scroll">
-        <div class="border-b pb-3 mb-4">
-          <h3 class="font-bold text-lg text-gray-800 leading-tight">Pengurus Carian Lanjutan</h3>
-          <p class="text-xs text-gray-500 mt-1">Gabungkan pencarian berbeza kumpulan secara bebas</p>
+      
+      <!-- KOTAK PANEL (KIRI): QUERY BUILDER -->
+      <div class="col-span-1 glass rounded-xl shadow-md p-4 sm:p-5 border border-gray-100 flex flex-col panel-scroll overflow-y-auto filter-scroll max-h-[50vh] lg:max-h-full">
+        <div class="border-b pb-3 mb-4 hidden sm:block">
+          <h3 class="font-extrabold text-lg text-gray-800 leading-tight">Pengurus Carian Terperinci</h3>
+          <p class="text-[11px] text-gray-500 mt-0.5">Gabung tapisan mengikut kelompok serentak</p>
         </div>
         
         <div id="dynamic-groups-container" class="space-y-4 flex-grow"></div>
         
         <div class="mt-4 text-center">
-            <button onclick="addGroup()" class="w-full border-2 border-dashed border-blue-300 bg-blue-50 text-blue-700 py-2 rounded-md hover:bg-blue-100 font-semibold text-sm transition">
-                ➕ Tambah Kumpulan Carian Baru (ATAU / OR)
+            <button onclick="addGroup()" class="w-full border-2 border-dashed border-blue-300 bg-blue-50 text-blue-700 py-1.5 sm:py-2 rounded-md hover:bg-blue-100 font-extrabold text-xs transition">
+                ➕ TAMBAH KUMPULAN (ATAU/OR)
             </button>
         </div>
 
         <div class="mt-6 pt-4 border-t border-gray-200 grid grid-cols-2 gap-2 sticky bottom-0 bg-white py-2">
-          <button onclick="applyFilters()" class="col-span-2 bg-blue-600 text-white py-2.5 rounded-md hover:bg-blue-700 transition shadow-md font-semibold tracking-wide">🔍 Jalankan Carian</button>
-          <button onclick="resetFilters()" class="col-span-2 bg-gray-100 text-gray-700 py-2 rounded-md hover:bg-gray-200 transition font-medium border border-gray-300">Set Semula (Reset)</button>
+          <button onclick="applyFilters()" class="col-span-2 bg-blue-700 text-white py-2.5 rounded-md hover:bg-blue-800 transition shadow-md font-extrabold tracking-wide text-sm">🔍 JALANKAN CARIAN PETA</button>
+          <button onclick="resetFilters()" class="col-span-2 bg-gray-100 text-gray-700 py-2 rounded-md hover:bg-gray-200 transition font-bold border border-gray-300 text-xs">♻️ Set Semula (Reset)</button>
         </div>
       </div>
 
-      <!-- MAP CONTAINER -->
-      <div class="lg:col-span-3 bg-white rounded-xl shadow-md p-3 relative ring-1 ring-gray-100">
-        <!-- BUTANG TOGGLE NAMA FASILITI -->
-        <div class="absolute top-6 right-6 z-[400]">
-           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-4 py-2 text-sm shadow-md rounded-md border border-gray-300 font-extrabold text-blue-800 hover:bg-gray-50 transition cursor-pointer">
-              🏷️ Papar Nama Fasiliti
+      <!-- KOTAK PETA (KANAN) -->
+      <div class="lg:col-span-3 bg-white rounded-xl shadow-md p-1 sm:p-3 relative ring-1 ring-gray-200 overflow-hidden">
+        
+        <!-- BUTANG TOGGLE TERAPUNG DI ATAS PETA -->
+        <div class="absolute top-[60px] sm:top-6 right-2 sm:right-6 z-[400]">
+           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-2 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs shadow-[0_2px_8px_rgba(0,0,0,0.3)] rounded-md border border-gray-200 font-extrabold text-blue-800 hover:bg-gray-50 transition cursor-pointer">
+              🏷️ PAPAR NAMA
            </button>
         </div>
+
         <div id="map"></div>
+
+        <!-- PETUNJUK PETA BOLEH SERET / SOROK -->
+        <div id="draggable-legend">
+           <div class="flex justify-between items-center border-b border-gray-200 pb-1 mb-2">
+              <h4 class="font-extrabold text-[11px] text-gray-800 uppercase" style="cursor: grab;">Petunjuk Semasa</h4>
+              <button onclick="toggleLegendContent()" class="text-xs text-blue-500 font-extrabold p-1 w-6 h-6 hover:bg-blue-50 rounded" style="cursor: pointer;">-</button>
+           </div>
+           <div id="legend-content" class="space-y-1.5 transition-all max-h-[150px] overflow-y-auto filter-scroll pr-1">
+              <!-- Dijana Automatik -->
+           </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -103,30 +145,39 @@
 
     let map; let markersLayer = new L.LayerGroup(); let shapeLayer = new L.LayerGroup();
     let globalData = []; let globalHeaders = [];
+    
+    // Kategori warna penanda peta
     const ALLOWED_FILTER_INDICES = [3, 5, 6, 12, 13, 14, 15]; 
     const baseColors = ['blue', 'red', 'green', 'orange', 'violet', 'gold', 'yellow', 'grey', 'black', 'blue'];
     const hexColors = ['#2A81CB', '#CB2B3E', '#2AAD27', '#CB8427', '#9C2BCB', '#FFD326', '#CAC428', '#7B7B7B', '#3D3D3D', '#2A81CB'];
     
-    let categoryColorMap = {}; let legendControl;
+    let categoryColorMap = {}; 
     let groupCount = 0; let rowCount = 0;
     
-    // Status visual map terkini
+    // Pelukis Pemetaan
     let isLabelVisible = false;
-    let activeFilterKeysSet = new Set(); // Kenalpasti Lajur/Kolum yang diguna pakai dalam carian
+    let activeFilterKeysSet = new Set(); 
 
     function initMap() {
       map = L.map('map').setView([6.1184, 100.3685], 9);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(map);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© JKN Kedah', maxZoom: 18 }).addTo(map);
       markersLayer.addTo(map); shapeLayer.addTo(map);
-      legendControl = L.control({position: 'bottomright'});
-      legendControl.onAdd = function () { let div = L.DomUtil.create('div', 'info legend'); div.id = 'map-legend'; return div; };
-      legendControl.addTo(map);
+
+      // Aktifkan Skrip Penyeretan UI Petunjuk
+      let legendEl = document.getElementById('draggable-legend');
+      let draggable = new L.Draggable(legendEl);
+      draggable.enable();
+      
+      // Halang Peta dari terseret ketika nak seret Petunjuk
+      L.DomEvent.disableClickPropagation(legendEl);
+      L.DomEvent.disableScrollPropagation(legendEl);
+
       loadData(); loadSettings();
     }
 
     async function loadData() {
       try {
-        Swal.fire({title: 'Memuat turun data...', allowOutsideClick: false}); Swal.showLoading();
+        Swal.fire({title: 'Memuat turun data...', text: "Tunggu sebentar", allowOutsideClick: false}); Swal.showLoading();
         let response = await fetch(`${APPS_SCRIPT_URL}?action=getData`);
         let res = await response.json();
         if (res.error) throw new Error(res.error);
@@ -136,26 +187,24 @@
       } catch (e) { Swal.fire("Ralat", e.toString(), "error"); }
     }
 
-    // --- UI BUILDER ---
+    // --- Pemusatan Carian UI ---
     function addGroup() {
       groupCount++;
       let container = document.getElementById('dynamic-groups-container');
       let groupId = `group-id-${groupCount}`;
-      let orDivider = groupCount > 1 ? `<div class="text-center my-2 text-xs font-bold text-gray-400">----- ATAU (OR) -----</div>` : '';
       let groupWrapper = document.createElement('div');
       groupWrapper.id = groupId; groupWrapper.className = "filter-group-block";
       
       let html = `
-        ${orDivider}
+        ${groupCount > 1 ? `<div class="text-center my-3 text-[10px] font-extrabold text-blue-300">-------- ATAU / OR --------</div>` : ''}
         <div class="p-3 bg-white border-2 border-gray-200 rounded-lg shadow-sm relative">
-           ${groupCount > 1 ? `<button onclick="document.getElementById('${groupId}').remove()" class="absolute top-2 right-2 p-1 text-red-500 hover:bg-red-50 rounded font-bold text-sm">Padam Kumpulan</button>` : ''}
-           <h4 class="text-[13px] font-extrabold text-blue-900 mb-3 border-b pb-1">KUMPULAN CARIAN ${groupCount}</h4>
+           ${groupCount > 1 ? `<button onclick="document.getElementById('${groupId}').remove()" class="absolute top-1.5 right-1.5 text-red-500 hover:bg-red-50 px-2 py-0.5 rounded font-extrabold text-[10px]">✕ BATAL</button>` : ''}
+           <h4 class="text-[11px] font-extrabold text-blue-900 mb-2 border-b border-gray-200 pb-1">KUMPULAN CARIAN ${groupCount}</h4>
            <div id="${groupId}-rows" class="space-y-3"></div>
-           <button onclick="addRow('${groupId}')" class="mt-3 text-[11px] font-bold bg-gray-100 text-gray-600 px-3 py-1.5 rounded hover:bg-gray-200 transition">+ Syarat Lanjut Di Sini (DAN / AND)</button>
+           <button onclick="addRow('${groupId}')" class="mt-3 text-[10px] font-extrabold bg-blue-50 text-blue-600 px-3 py-1.5 rounded-sm w-full hover:bg-blue-100 transition shadow-sm">+ Syarat (DAN)</button>
         </div>
       `;
-      groupWrapper.innerHTML = html;
-      container.appendChild(groupWrapper);
+      groupWrapper.innerHTML = html; container.appendChild(groupWrapper);
       addRow(groupId);
     }
 
@@ -163,22 +212,20 @@
       rowCount++;
       const rowId = `filter-row-${rowCount}`;
       let rowContainer = document.getElementById(`${groupId}-rows`);
-      let totalRowsInGroup = rowContainer.children.length;
       let wrapper = document.createElement('div');
-      wrapper.id = rowId; wrapper.className = "filter-row-item pl-2 border-l-2 border-blue-200 relative";
-      let deleteBtn = totalRowsInGroup > 0 ? `<button onclick="document.getElementById('${rowId}').remove()" class="absolute top-0 right-0 text-red-400 font-bold hover:text-red-600 text-lg">×</button>` : '';
-      let andLabel = totalRowsInGroup > 0 ? `<div class="text-[10px] text-blue-500 font-bold absolute -left-[14px] top-4 bg-white px-0.5">DAN</div>` : '';
-
-      let colOptionsHTML = `<option value="">-- Pilih Kolum Data --</option>`;
+      wrapper.id = rowId; wrapper.className = "filter-row-item pl-2.5 border-l-[3px] border-blue-400 relative";
+      let deleteBtn = rowContainer.children.length > 0 ? `<button onclick="document.getElementById('${rowId}').remove()" class="absolute -top-1 -right-1 text-red-400 font-bold hover:text-red-600 text-lg">×</button>` : '';
+      let colOptionsHTML = `<option value="">- Pilih Profil Data -</option>`;
       ALLOWED_FILTER_INDICES.forEach(index => { if(globalHeaders[index]) colOptionsHTML += `<option value="${index}">${globalHeaders[index]}</option>`; });
-
+      
       wrapper.innerHTML = `
-        ${andLabel} ${deleteBtn}
-        <select class="w-full text-xs rounded-md bg-gray-50 border-gray-300 shadow-inner p-1.5 mb-2 border focus:ring-blue-500 filter-target-col font-semibold text-gray-700" onchange="updateFilterValues(this, '${rowId}')">
+        ${rowContainer.children.length > 0 ? `<div class="text-[9px] text-blue-500 font-black absolute -left-[14px] top-6 bg-white py-0.5">DAN</div>` : ''}
+        ${deleteBtn}
+        <select class="w-full text-xs rounded border border-gray-300 shadow-inner p-1.5 mb-1.5 focus:border-blue-500 filter-target-col font-bold text-gray-700" onchange="updateFilterValues(this, '${rowId}')">
           ${colOptionsHTML}
         </select>
-        <div class="w-full text-xs rounded-md border border-gray-200 shadow-inner p-1.5 bg-gray-50 max-h-32 overflow-y-auto filter-scroll filter-target-val-container">
-           <p class="text-gray-400 italic text-[10px] text-center">Tetapkan kategori...</p>
+        <div class="w-full rounded border border-gray-200 shadow-inner p-1 bg-gray-50 max-h-28 overflow-y-auto filter-scroll filter-target-val-container">
+           <p class="text-gray-400 italic text-[10px] text-center py-1">Pilih kolum...</p>
         </div>
       `;
       rowContainer.appendChild(wrapper);
@@ -187,18 +234,17 @@
     function updateFilterValues(selectElement, rowId) {
       let colIndex = selectElement.value;
       let valContainer = document.querySelector(`#${rowId} .filter-target-val-container`);
-      if(colIndex === "") { valContainer.innerHTML = `<p class="text-gray-400 italic text-xs text-center py-2">Tetapkan kategori...</p>`; return; }
-      
+      if(colIndex === "") { valContainer.innerHTML = `<p class="text-gray-400 italic text-[10px] text-center py-1">Pilih kolum...</p>`; return; }
       let headerName = globalHeaders[colIndex];
       let uniqueValues = [...new Set(globalData.map(d => d[headerName]).filter(d => d))].sort();
-      let html = `<div class="space-y-1">
-        <label class="flex items-center space-x-2 text-[11px] font-bold text-blue-700 border-b border-gray-200 pb-1 mb-1 cursor-pointer hover:bg-blue-50 px-1 rounded">
-          <input type="checkbox" class="rounded" onchange="toggleAllCheckboxes(this, '${rowId}')"> <span>PILIH SEMUA</span>
+      let html = `<div class="space-y-0.5">
+        <label class="flex items-center space-x-2 text-[10px] font-black text-blue-700 border-b border-gray-200 pb-1 mb-1 cursor-pointer hover:bg-blue-100 px-1 rounded transition select-none">
+          <input type="checkbox" class="rounded w-3 h-3" onchange="toggleAllCheckboxes(this, '${rowId}')"> <span>PILIH SEMUA</span>
         </label>
       `;
       uniqueValues.forEach(v => { 
-        html += `<label class="flex items-center space-x-2 text-[12px] text-gray-700 cursor-pointer hover:bg-gray-100 px-1 rounded transition">
-            <input type="checkbox" value="${v}" class="filter-chk rounded border-gray-300"><span>${v}</span>
+        html += `<label class="flex items-start space-x-2 text-[11px] font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 p-1.5 rounded transition select-none">
+            <input type="checkbox" value="${v}" class="filter-chk rounded border-gray-300 w-3 h-3 mt-0.5"><span class="leading-tight">${v}</span>
           </label>`; 
       });
       valContainer.innerHTML = html + `</div>`; valContainer.classList.add("bg-white");
@@ -207,23 +253,26 @@
     function toggleAllCheckboxes(masterCheckbox, rowId) { document.querySelectorAll(`#${rowId} .filter-chk`).forEach(cb => cb.checked = masterCheckbox.checked); }
     function resetFilters() { document.getElementById('dynamic-groups-container').innerHTML = ''; groupCount = 0; addGroup(); applyFilters(); }
     
+    function toggleLegendContent() {
+       let content = document.getElementById("legend-content");
+       content.style.display = content.style.display === "none" ? "block" : "none";
+    }
+
     function toggleNamaFasiliti() {
         isLabelVisible = !isLabelVisible;
         let btn = document.getElementById("toggle-label-btn");
         if(isLabelVisible) {
-            btn.innerHTML = `🚫 Sembunyikan Nama`;
-            btn.classList.add("text-red-700", "bg-red-50"); btn.classList.remove("text-blue-800", "bg-white");
+            btn.innerHTML = `🚫 SOROK NAMA`;
+            btn.classList.add("text-white", "bg-red-600", "border-red-600", "shadow-red-500/50"); btn.classList.remove("text-blue-800", "bg-white", "border-gray-200");
         } else {
-            btn.innerHTML = `🏷️ Papar Nama Fasiliti`;
-            btn.classList.remove("text-red-700", "bg-red-50"); btn.classList.add("text-blue-800", "bg-white");
+            btn.innerHTML = `🏷️ PAPAR NAMA`;
+            btn.classList.remove("text-white", "bg-red-600", "border-red-600", "shadow-red-500/50"); btn.classList.add("text-blue-800", "bg-white", "border-gray-200");
         }
-        applyFilters(); // Rerender marker dengan text
+        applyFilters(); 
     }
 
     function applyFilters() {
-      let filterGroupsRules = []; 
-      activeFilterKeysSet.clear(); // Set semula kolum tapisan digunapakai
-      
+      let filterGroupsRules = []; activeFilterKeysSet.clear();
       document.querySelectorAll('.filter-group-block').forEach((groupDiv, gIndex) => {
         let conditions = [];
         groupDiv.querySelectorAll('.filter-row-item').forEach(row => {
@@ -233,11 +282,11 @@
             if(checkedBoxes.length > 0) {
               let keyName = globalHeaders[colIndex];
               conditions.push({ colIndex: parseInt(colIndex), key: keyName, values: checkedBoxes });
-              activeFilterKeysSet.add(keyName); // Rakam bahawa kolum ini ditapis
+              activeFilterKeysSet.add(keyName);
             }
           }
         });
-        if(conditions.length > 0) filterGroupsRules.push({id: gIndex + 1, rules: conditions});
+        if(conditions.length > 0) filterGroupsRules.push({rules: conditions});
       });
 
       let filteredData = globalData;
@@ -266,10 +315,10 @@
       const latCol = globalHeaders.find(h => h.toLowerCase().includes('lat'));
       const longCol = globalHeaders.find(h => h.toLowerCase().includes('log') || h.toLowerCase().includes('lon'));
       
-      // Auto-Kesan Kolum Penting Profile
-      const colDaerah = globalHeaders.find(h => h.toLowerCase().includes('daerah'));
-      const colJenis = globalHeaders.find(h => h.toLowerCase().includes('jenis'));
-      const colNama = globalHeaders.find(h => h.toLowerCase().includes('titik') || h.toLowerCase().includes('fasiliti') || h.toLowerCase().includes('nama')); 
+      // Index Rigid mengikut arahan
+      const colKod = globalHeaders[1];   // Kolum B
+      const colJenis = globalHeaders[3]; // Kolum D
+      const colNama = globalHeaders[6];  // Kolum G
 
       data.forEach(item => {
         let lat = item[latCol], lng = item[longCol];
@@ -277,82 +326,61 @@
         let markerColor = categoryColorMap[catValue] ? categoryColorMap[catValue].colorName : 'blue';
         
         if(lat && lng && !isNaN(lat) && !isNaN(lng)) {
+          let namaTertentu = item[colNama] || "Tiada Nama Didaftarkan";
           
-          // ---- PEMBINAAN KANDUNGAN PROFAIL FASILITI DINAMIK ----
-          let namaFasilitiActual = colNama && item[colNama] ? item[colNama] : "Tiada Nama";
+          // Profil Moden
+          let popupContent = `<div class="p-1.5 min-w-[220px] max-w-[300px]">`;
+          popupContent += `<h4 class="font-black text-[13px] text-blue-900 border-b-2 border-blue-200 pb-1.5 mb-2">${namaTertentu}</h4>`;
           
-          let popupContent = `<div class="p-2 min-w-[250px] max-w-[320px]">`;
-          popupContent += `<h4 class="font-extrabold text-[15px] text-blue-900 border-b-2 border-blue-100 pb-2 mb-3 shadow-[0_4px_2px_-2px_rgba(0,0,0,0.05)]">${namaFasilitiActual}</h4>`;
-          
-          // Profil Kekal (Daerah & Jenis Fasiliti)
-          if(colDaerah && item[colDaerah]) {
-             popupContent += `<div class="mb-1"><span class="text-[11px] font-bold text-gray-500 uppercase">Daerah:</span> <span class="text-[13px] font-semibold text-gray-800">${item[colDaerah]}</span></div>`;
-          }
-          if(colJenis && item[colJenis]) {
-             popupContent += `<div class="mb-3"><span class="text-[11px] font-bold text-gray-500 uppercase">Kategori:</span> <span class="text-[13px] font-semibold text-gray-800">${item[colJenis]}</span></div>`;
-          }
+          if(colKod) popupContent += `<div class="mb-1 bg-gray-50 px-1 py-0.5 rounded"><span class="text-[10px] font-extrabold text-blue-700 uppercase">Kod:</span> <span class="text-[11px] font-bold text-gray-800">${item[colKod] || "-"}</span></div>`;
+          if(colJenis) popupContent += `<div class="mb-2 bg-gray-50 px-1 py-0.5 rounded"><span class="text-[10px] font-extrabold text-orange-600 uppercase">Jenis:</span> <span class="text-[11px] font-bold text-gray-800">${item[colJenis] || "-"}</span></div>`;
 
-          // Profail Dinamik Pilihan Pengguna (Contoh: Menambah 'Mesin Fundus Kamera' jika ia salah satu tapisan yang digunakan / dicari)
+          // Ciri Tambahan Carian Dinamik
           if(activeFilterKeysSet.size > 0) {
-             let adaExtraInfo = false;
-             let extraContent = `<div class="mt-3 pt-2 border-t border-dashed border-gray-300">`; // Kotak pengasingan
-             
+             let activeContent = ``;
              activeFilterKeysSet.forEach(key => {
-                 // Hanya tunjukkan key itu kalau ia BUKAN Daerah/Jenis/Nama (Sebab yang tu dah tunjuk di atas)
-                 if(key !== colDaerah && key !== colJenis && key !== colNama) {
-                     adaExtraInfo = true;
-                     let val = item[key] ? item[key] : "Tiada Rekod";
-                     extraContent += `<div class="mb-1"><span class="text-[11px] font-bold text-blue-700 uppercase">${key}</span> <br><span class="text-[13px] text-gray-800">${val}</span></div>`;
+                 if(key !== colKod && key !== colJenis && key !== colNama) {
+                     let val = item[key] || "Tiada";
+                     activeContent += `<div class="mb-1 text-[11px]"><strong class="text-green-700 uppercase p-0.5 bg-green-50 rounded">${key}:</strong> <span class="font-bold text-gray-700">${val}</span></div>`;
                  }
              });
-             extraContent += `</div>`;
-             
-             if(adaExtraInfo) {
-                popupContent += extraContent;
-             }
+             if(activeContent) popupContent += `<div class="mt-2 pt-2 border-t-[1.5px] border-dashed border-gray-300">` + activeContent + `</div>`;
           }
           popupContent += `</div>`;
 
-          // Cipta Penanda / Marker
           let markerElement = L.marker([lat, lng], {icon: getCustomIcon(markerColor)});
           
-          // Togol Nama Paparan Terapung berdekatan Marker
-          if(isLabelVisible && namaFasilitiActual !== "Tiada Nama") {
-              markerElement.bindTooltip(namaFasilitiActual, {
-                  permanent: true, direction: "right", offset: [8, -15], className: "custom-map-label"
-              });
-          }
+          // Hover / Mouseover action (Khas PC) & Click (Phone)
+          markerElement.bindPopup(popupContent, {maxWidth: 320, closeButton: false});
+          markerElement.on('mouseover', function(e) { this.openPopup(); });
 
-          markerElement.bindPopup(popupContent, {maxWidth: 350}).addTo(markersLayer);
+          if(isLabelVisible && namaTertentu !== "Tiada Nama Didaftarkan") {
+              markerElement.bindTooltip(namaTertentu, { permanent: true, direction: "right", offset: [15, -15], className: "custom-map-label" });
+          }
+          markerElement.addTo(markersLayer);
         }
       });
       
-      updateLegend(activeFiltersExist = categoryColorMap);
+      updateLegend();
       let el = document.getElementById('stat-total'); el.innerText = data.length; el.classList.add("scale-125"); setTimeout(()=> el.classList.remove("scale-125"), 200);
     }
 
-    function getCustomIcon(colorName) {
-      return new L.Icon({ iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${colorName}.png`, shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
-    }
+    function getCustomIcon(colorName) { return new L.Icon({ iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${colorName}.png`, shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] }); }
 
     function updateLegend() {
-      let div = document.getElementById('map-legend');
-      let html = `<h4 class="font-extrabold text-[12px] text-gray-800 border-b border-gray-200 pb-1 mb-2 tracking-wide uppercase">Petunjuk Semasa</h4>`;
-      let keys = Object.keys(categoryColorMap);
+      let div = document.getElementById('legend-content');
+      let html = ``; let keys = Object.keys(categoryColorMap);
       if(keys.length === 0) html += `<p class="text-[10px] italic text-gray-500 mt-2">Tiada Data Bertepatan</p>`;
       else {
-        html += `<div class="space-y-1 mt-2">`;
-        for (let key in categoryColorMap) html += `<div class="flex items-start"><i style="background: ${categoryColorMap[key].hex}"></i> <span class="text-[10px] font-bold text-gray-600 mt-0.5">${key}</span></div>`;
-        html += `</div>`;
+        for (let key in categoryColorMap) {
+           html += `<div class="flex items-center space-x-2 py-0.5"><div class="legend-color-box" style="background: ${categoryColorMap[key].hex}"></div> <span class="text-[10px] font-extrabold text-gray-600 uppercase w-full truncate" title="${key}">${key}</span></div>`;
+        }
       }
       div.innerHTML = html;
     }
 
-    async function loadSettings() {
-      try { let response = await fetch(`${APPS_SCRIPT_URL}?action=getSettings`); let res = await response.json(); if(res.shapefileLink) omnivore.geojson(res.shapefileLink, null, L.geoJson(null, {style: { color: "#3B82F6", weight: 2, fillOpacity: 0.2 }})).addTo(shapeLayer); } catch(e) {}
-    }
-    
-    async function openSettings() {/* Swal function retained same as before */}
+    async function loadSettings() { try { let response = await fetch(`${APPS_SCRIPT_URL}?action=getSettings`); let res = await response.json(); if(res.shapefileLink) omnivore.geojson(res.shapefileLink, null, L.geoJson(null, {style: { color: "#3B82F6", weight: 2, fillOpacity: 0.2 }})).addTo(shapeLayer); } catch(e) {} }
+    async function openSettings() {/* Kekalkan Kod Swall dari asal untuk settings */}
 
     window.onload = initMap;
   </script>
