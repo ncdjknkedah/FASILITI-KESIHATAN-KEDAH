@@ -24,13 +24,15 @@
     #sidebar { transition: margin-left 0.3s ease-in-out; }
     .sidebar-hidden { margin-left: -350px; }
     
-    /* Tetingkap Modal Pentadbir Terapung */
-    #admin-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; items-center: center; }
+    /* Pengikat Peta Mutlak Untuk Padam Masalah "Blank Map" */
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; background: #e2e8f0; }
+
+    #admin-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; align-items: center; }
     .modal-content-scale { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     @keyframes modalPop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
   </style>
 </head>
-<body class="bg-slate-50 min-h-screen flex flex-col relative">
+<body class="bg-slate-50 min-h-screen flex flex-col relative w-full">
 
   <!-- Navigasi -->
   <nav class="bg-blue-900 text-white shadow-lg flex-shrink-0 z-50 h-[60px]">
@@ -67,7 +69,7 @@
       </div>
     </div>
 
-    <!-- Sistem Utama Berpusat: Panel Kiri & Peta Kanan -->
+    <!-- Sistem Berpusat: Panel Kiri & Peta Kanan -->
     <div class="flex flex-grow min-h-0 gap-4 relative w-full">
       
       <!-- KOTAK PANEL SIDEBAR -->
@@ -93,29 +95,27 @@
         <!-- Zon Skroll Kumpulan Carian -->
         <div class="overflow-y-auto filter-scroll p-3 flex-grow" id="dynamic-groups-container"></div>
         
-        <!-- Butang Tambah Group -->
         <div class="px-3 pb-2 pt-1">
             <button onclick="addGroup()" class="w-full border-2 border-dashed border-blue-300 bg-blue-50 text-blue-700 py-2 rounded-md hover:bg-blue-100 font-extrabold text-[11px] transition">
                 ➕ TAMBAH KUMPULAN (OR)
             </button>
         </div>
 
-        <!-- Butang Aksi -->
         <div class="p-3 border-t border-gray-200 bg-white rounded-b-xl grid grid-cols-2 gap-2">
           <button onclick="applyFilters()" class="col-span-2 bg-blue-700 text-white py-2 rounded-md hover:bg-blue-800 transition shadow font-extrabold tracking-wide text-xs">🔍 CARI DI PETA</button>
           <button onclick="resetFilters()" class="col-span-2 bg-gray-100 text-gray-700 py-1.5 rounded-md hover:bg-gray-200 transition font-bold border border-gray-300 text-[10px]">♻️ RESET</button>
         </div>
       </div>
 
-      <!-- KOTAK PETA -->
-      <!-- Butang Buka Sidebar -->
-      <button id="show-sidebar-btn" onclick="toggleSidebar()" class="hidden absolute top-4 left-0 z-30 bg-blue-900 text-white p-2 rounded-r-lg shadow-[4px_0_10px_rgba(0,0,0,0.3)] hover:bg-blue-800 transition border-y border-r border-blue-500">
+      <!-- KOTAK PETA (Hanya map berada di bahagian ini bagi memastikan kesempurnaan grid) -->
+      <button id="show-sidebar-btn" onclick="toggleSidebar()" class="hidden absolute top-4 left-0 z-[1001] bg-blue-900 text-white p-2 rounded-r-lg shadow-[4px_0_10px_rgba(0,0,0,0.3)] hover:bg-blue-800 transition border-y border-r border-blue-500">
          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
       </button>
 
-      <div class="flex-grow bg-white rounded-xl shadow-md relative ring-1 ring-gray-200 overflow-hidden h-full z-10 w-full">
-        <!-- Peta Leaflet Berada Didalam ni -->
-        <div id="map" class="w-full h-full"></div>
+      <!-- Ruang Utama Peta -->
+      <div class="flex-grow bg-white rounded-xl shadow-md relative ring-1 ring-gray-200 overflow-hidden h-full z-10 w-full min-h-[300px]">
+        <!-- Peta Leaflet Berada Didalam Kotak Mutlak -->
+        <div id="map"></div>
 
         <!-- ALAT KAWALAN PETA BOLEH SERET / SOROK -->
         <div id="draggable-tools">
@@ -131,7 +131,7 @@
                   <button onclick="toggleLegendContent()" class="text-xs text-blue-500 font-extrabold p-1 w-6 h-6 hover:bg-blue-50 rounded" title="Sorok/Buka Menu">-</button>
                </div>
                <div id="legend-content" class="space-y-1.5 transition-all max-h-[150px] overflow-y-auto filter-scroll pr-1">
-                  <p class="text-[10px] text-gray-400 italic">Sila muat turun ruang pangkalan</p>
+                  <p class="text-[10px] text-gray-400 italic">Sistem memuat naik data...</p>
                </div>
            </div>
         </div>
@@ -139,10 +139,8 @@
     </div>
   </div>
 
-  <!-- ============================================== -->
-  <!-- MODAL KHAS: PENTADBIR (PILIH KOLUM & SHAPEFILE) -->
-  <!-- ============================================== -->
-  <div id="admin-modal-overlay" class="flex items-center">
+  <!-- MODAL KHAS: PENTADBIR -->
+  <div id="admin-modal-overlay">
       <div class="bg-white rounded-xl shadow-2xl w-[90%] max-w-[650px] max-h-[90vh] flex flex-col modal-content-scale relative overflow-hidden ring-4 ring-blue-500/30">
           
           <div class="p-4 bg-blue-900 text-white flex justify-between items-center border-b border-blue-800 flex-shrink-0">
@@ -150,18 +148,18 @@
                 <h2 class="font-black tracking-widest uppercase text-sm">Pusat Kawalan Pentadbir WebGIS</h2>
                 <p class="text-[10px] text-blue-200 mt-1 italic">Susunan ini akan disimpan pada pangkalan Cloud secara kekal.</p>
              </div>
-             <button onclick="closeAdminModal()" class="text-white hover:text-red-400 bg-blue-800 hover:bg-blue-700 p-1.5 rounded transition">✖</button>
+             <button onclick="closeAdminModal()" class="text-white hover:text-red-400 bg-blue-800 hover:bg-blue-700 p-1.5 rounded transition font-bold">TUTUP ✕</button>
           </div>
 
           <!-- Kata Laluan Mask -->
           <div id="admin-auth-panel" class="p-8 flex flex-col items-center justify-center flex-grow bg-slate-50">
              <div class="text-[4rem] mb-2 text-blue-800">🔐</div>
-             <p class="text-xs font-bold text-gray-600 uppercase tracking-widest mb-4">Pengesahan Pentadbir</p>
+             <p class="text-xs font-bold text-gray-600 uppercase tracking-widest mb-4">Pengesahan Pihak Pengurusan</p>
              <input type="password" id="admin-pwd" placeholder="Masukkan Kata Laluan..." class="w-full max-w-[300px] p-2.5 border-2 border-gray-300 rounded focus:border-blue-500 text-center font-bold tracking-widest">
-             <button onclick="verifyAdmin()" class="mt-4 bg-blue-700 text-white px-6 py-2 rounded font-extrabold uppercase text-xs shadow hover:bg-blue-800">Sahkan Akses</button>
+             <button onclick="verifyAdmin()" class="mt-4 bg-blue-700 text-white px-6 py-2 rounded font-extrabold uppercase text-xs shadow hover:bg-blue-800">Sahkan Akses Sistem</button>
           </div>
 
-          <!-- KANDUNGAN TETAPAN (Tersembunyi Awalnya) -->
+          <!-- KANDUNGAN TETAPAN -->
           <div id="admin-settings-panel" class="hidden flex-col flex-grow overflow-hidden bg-slate-50">
              <div class="p-4 overflow-y-auto filter-scroll flex-grow">
                  
@@ -175,17 +173,17 @@
 
                  <!-- Bahagian 2: Pilihan Kolum Dinamik -->
                  <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                    <h3 class="font-black text-blue-800 text-xs mb-2 uppercase border-b pb-1">2. Penentuan Lajur Carian Dibenarkan</h3>
-                    <p class="text-[10px] text-gray-500 mb-3">Klik pada Kolum yang *AKAN KELUAR* di Menu Filter Pengguna Awam. (Jika lajur baharu di Google Sheet diwujudkan kelak, Admin harus masuk ke sini semula untuk membubuh tanda right).</p>
+                    <h3 class="font-black text-blue-800 text-xs mb-2 uppercase border-b pb-1">2. Penentuan Lajur (Kolum) Carian Dibenarkan</h3>
+                    <p class="text-[10px] text-gray-500 mb-3">Tanda pangkahkan (Check) pada Kolum yang *AKAN KELUAR* di Menu Filter Pengguna Awam.</p>
                     <div id="admin-columns-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                        <!-- Checkbox Kolum Disenaraikan Disini -->
                     </div>
                  </div>
              </div>
 
-             <div class="p-3 bg-red-50/20 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
+             <div class="p-3 bg-blue-50/50 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
                 <button onclick="closeAdminModal()" class="px-4 py-2 bg-gray-200 font-bold text-gray-700 text-xs rounded hover:bg-gray-300">Batal</button>
-                <button onclick="saveAdminSettings()" class="px-5 py-2 bg-green-600 font-extrabold text-white text-xs rounded shadow-lg hover:bg-green-700 uppercase">💾 Simpan Susunan Ke Pangkalan</button>
+                <button onclick="saveAdminSettings()" class="px-5 py-2 bg-green-600 font-extrabold text-white text-xs rounded shadow-lg hover:bg-green-700 uppercase">💾 Simpan Susunan Ke Sistem Utama</button>
              </div>
           </div>
       </div>
@@ -197,6 +195,7 @@
   <script>
     // =========================================================
     // PERHATIAN: Masukkan Google Web App URL /exec anda
+    // Pastikan Format Web App ini adalah Execute sbg: 'Me' & Access: 'Anyone'
     // =========================================================
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydQPW0CdQu6dk7Xv_Bu32K4I6Z2S9bBUN1EPdQddXmX67gkhooD9Vhy5bxsrATHUf_Qw/exec"; 
 
@@ -206,7 +205,7 @@
     // VARIABLES PENTADBIR
     let dynamicAllowedFilterIndices = []; 
     let dynamicShapefilesList = []; 
-    let activeShapeLayers = {}; // Simpan status on/off layer pengguna
+    let activeShapeLayers = {}; 
     
     const baseColors = ['blue', 'red', 'green', 'orange', 'violet', 'gold', 'yellow', 'grey', 'black', 'blue'];
     const hexColors = ['#2A81CB', '#CB2B3E', '#2AAD27', '#CB8427', '#9C2BCB', '#FFD326', '#CAC428', '#7B7B7B', '#3D3D3D', '#2A81CB'];
@@ -215,12 +214,14 @@
     let isLabelVisible = false; let activeFilterKeysSet = new Set(); 
 
     function initMap() {
+      // Setup asas kanvas peta
       map = L.map('map', {zoomControl: false}).setView([6.1184, 100.3685], 9);
       L.control.zoom({ position: 'topleft' }).addTo(map);
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© JKN Kedah', maxZoom: 18 }).addTo(map);
       markersLayer.addTo(map);
 
+      // Alat seret
       let toolsEl = document.getElementById('draggable-tools');
       let draggable = new L.Draggable(toolsEl); draggable.enable();
       L.DomEvent.disableClickPropagation(toolsEl); L.DomEvent.disableScrollPropagation(toolsEl);
@@ -231,29 +232,45 @@
     }
 
     async function initFullLoad() {
-      Swal.fire({title: 'Memuatkan GIS...', text: "Mengambil data berpusat...", allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
+      // HALANG CRASH JIKA PENGGUNA TERLUPA LETAK URL GAS:
+      if (APPS_SCRIPT_URL.includes("YOUR_GAS_WEB_APP_URL_HERE")) {
+          Swal.fire({
+              icon: 'warning',
+              title: 'Harap Maklum',
+              text: 'Sila gantikan nama link lalai `APPS_SCRIPT_URL` di ruangan kod HTML anda kepada Pautan Google Script (.gs) anda yang telah di-deploy (akhiran /exec) terlebih dahulu.'
+          });
+          return;
+      }
+
+      Swal.fire({title: 'Memuatkan Hub GIS...', text: "Mengambil data berpusat dari pangkalan...", allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
       
       try {
-        // Ambil Data Sheet
-        let resData = await fetch(`${APPS_SCRIPT_URL}?action=getData`).then(r => r.json());
+        let reqData = await fetch(`${APPS_SCRIPT_URL}?action=getData`);
+        if(!reqData.ok) throw new Error("Gagal hubungi pelayan data. " + reqData.status);
+        
+        let resData = await reqData.json();
         if(resData.error) throw new Error(resData.error);
+        if(!resData.data || resData.data.length === 0) throw new Error("Data Kosong / Ralat Bacaan Pangkalan Data.");
+
         globalData = resData.data; globalHeaders = resData.headers;
         document.getElementById('stat-total-db').innerText = globalData.length;
 
-        // Ambil Tetapan (Kolum & Shapefiles) Dari Pangkalan Cloud Admin
-        let resSet = await fetch(`${APPS_SCRIPT_URL}?action=getSettings`).then(r => r.json());
+        // Ambil Tetapan Bentuk (Shapefiles & Kolum) 
+        let reqSet = await fetch(`${APPS_SCRIPT_URL}?action=getSettings`);
+        let resSet = await reqSet.json();
         
         dynamicAllowedFilterIndices = resSet.allowedFilters || [];
         dynamicShapefilesList = resSet.shapefiles || [];
 
         renderPublicShapefileList();
         
-        // Setup Filter Ui Pertama Kali
         addGroup(); applyFilters(); Swal.close();
-      } catch (e) { Swal.fire("Ralat Maut", e.toString(), "error"); }
+      } catch (e) { 
+        Swal.fire("Sistem Kesihatan Tergendala", "Semak sambungan anda atau URL Google Apps Script. Mesej Teknikal: " + e.toString(), "error"); 
+      }
     }
 
-    // --- PEMBINAAN KUMPULAN PENAPISAN ---
+    // --- FUNGSI CARIAN & TAPISAN ---
     function addGroup() {
       groupCount++;
       let container = document.getElementById('dynamic-groups-container');
@@ -283,8 +300,7 @@
       wrapper.className = "filter-row-item pl-2 border-l-[3px] border-blue-400 relative bg-white px-2 py-2 shadow-sm rounded-r-md border border-gray-100";
       let deleteBtn = rowContainer.children.length > 0 ? `<button onclick="document.getElementById('${rowId}').remove()" class="absolute -top-1 -right-1 text-red-400 font-black hover:text-red-600 text-lg">×</button>` : '';
       
-      let colOptionsHTML = `<option value="">- Pilih Teras Pangkalan -</option>`;
-      // Loop Melalui Tetapan Dinamik Yang ADMIN Tetapkan
+      let colOptionsHTML = `<option value="">- Senarai Maklumat Carian -</option>`;
       dynamicAllowedFilterIndices.forEach(index => { 
         if(globalHeaders[index]) colOptionsHTML += `<option value="${index}">${globalHeaders[index]}</option>`; 
       });
@@ -296,7 +312,7 @@
           ${colOptionsHTML}
         </select>
         <div class="w-full rounded border border-gray-200 shadow-inner p-1 bg-gray-50 max-h-24 overflow-y-auto filter-scroll filter-target-val-container">
-           <p class="text-gray-400 italic text-[9px] text-center py-0.5">Pilih lajur...</p>
+           <p class="text-gray-400 italic text-[9px] text-center py-0.5">Sila pilih lajur di atas</p>
         </div>
       `;
       rowContainer.appendChild(wrapper);
@@ -305,14 +321,15 @@
     function updateFilterValues(selectElement, rowId) {
       let colIndex = selectElement.value;
       let valContainer = document.querySelector(`#${rowId} .filter-target-val-container`);
-      if(colIndex === "") { valContainer.innerHTML = `<p class="text-gray-400 italic text-[9px] text-center py-0.5">Pilih lajur...</p>`; return; }
+      if(colIndex === "") { valContainer.innerHTML = `<p class="text-gray-400 italic text-[9px] text-center py-0.5">Sila pilih lajur...</p>`; return; }
       let headerName = globalHeaders[colIndex];
       let uniqueValues = [...new Set(globalData.map(d => String(d[headerName])).filter(d => d && d!=="undefined"))].sort();
       let html = `<div class="space-y-0.5">
         <label class="flex items-center space-x-2 text-[9px] font-black text-blue-700 border-b border-gray-200 pb-1 mb-1 cursor-pointer hover:bg-blue-100 px-1 rounded transition select-none">
-          <input type="checkbox" class="rounded w-[10px] h-[10px]" onchange="toggleAllCheckboxes(this, '${rowId}')"> <span>PILIH SEMUA</span>
+          <input type="checkbox" class="rounded w-[10px] h-[10px]" onchange="toggleAllCheckboxes(this, '${rowId}')"> <span>PILIH SEMUA / PADAM</span>
         </label>`;
       uniqueValues.forEach(v => { 
+        // Menguruskan petikan (quotes) yang merosakkan parameter value html
         html += `<label class="flex items-start space-x-1.5 text-[10px] font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 p-1 rounded transition select-none">
             <input type="checkbox" value="${v.replace(/"/g, '&quot;')}" class="filter-chk rounded border-gray-300 w-[11px] h-[11px] mt-[1px]"><span class="leading-tight">${v}</span>
           </label>`; 
@@ -323,7 +340,7 @@
     function toggleAllCheckboxes(masterCheckbox, rowId) { document.querySelectorAll(`#${rowId} .filter-chk`).forEach(cb => cb.checked = masterCheckbox.checked); }
     function resetFilters() { document.getElementById('dynamic-groups-container').innerHTML = ''; groupCount = 0; addGroup(); applyFilters(); }
     
-    // --- AKSI PAPARAN ANTARA MUKA ---
+    // --- AKSI UI PETA ---
     function toggleSidebar() {
         let sidebar = document.getElementById('sidebar'); let showBtn = document.getElementById('show-sidebar-btn');
         if(sidebar.classList.contains('sidebar-hidden')) { sidebar.classList.remove('sidebar-hidden'); showBtn.classList.add('hidden'); } 
@@ -338,7 +355,6 @@
         applyFilters(); 
     }
 
-    // --- ENJIN CARIAN PERANTI ---
     function applyFilters() {
       let filterGroupsRules = []; activeFilterKeysSet.clear();
       document.querySelectorAll('.filter-group-block').forEach((groupDiv, gIndex) => {
@@ -403,7 +419,7 @@
              activeFilterKeysSet.forEach(key => {
                  if(key !== colKod && key !== colJenis && key !== colNama) {
                      let val = item[key] || "Tiada";
-                     activeContent += `<div class="mb-1 text-[11px] flex justify-between"><strong class="text-green-800 uppercase bg-green-100 px-1 rounded">${key}:</strong> <span class="font-bold text-gray-700 text-right w-1/2">${val}</span></div>`;
+                     activeContent += `<div class="mb-1 text-[11px] flex justify-between"><strong class="text-green-800 uppercase bg-green-100 px-1 rounded truncate max-w-[50%]">${key}</strong> <span class="font-bold text-gray-700 text-right w-[45%]">${val}</span></div>`;
                  }
              });
              if(activeContent) popupContent += `<div class="mt-2 pt-2 border-t border-dashed border-gray-300">` + activeContent + `</div>`;
@@ -429,7 +445,7 @@
 
     function updateLegend() {
       let div = document.getElementById('legend-content'); let html = ``; let keys = Object.keys(categoryColorMap);
-      if(keys.length === 0) html += `<p class="text-[10px] italic text-gray-500 mt-2">Tiada Data Bertepatan</p>`;
+      if(keys.length === 0) html += `<p class="text-[10px] italic text-gray-500 mt-2">Sila buat satu tapisan carian</p>`;
       else {
         for (let key in categoryColorMap) {
            html += `<div class="flex items-center space-x-2 py-0.5"><div class="legend-color-box" style="background: ${categoryColorMap[key].hex}"></div> <span class="text-[10px] font-extrabold text-gray-600 uppercase w-full truncate" title="${key}">${key}</span></div>`;
@@ -439,18 +455,18 @@
     }
 
     // ==========================================
-    // SISTEM PENGURUSAN SHAPEFILE AWAM
+    // SISTEM PENGURUSAN SHAPEFILE AWAM (UI KIRI)
     // ==========================================
     function renderPublicShapefileList() {
         let container = document.getElementById('public-shapefile-list');
         if(dynamicShapefilesList.length === 0) {
-            container.innerHTML = `<p class="text-[9px] text-gray-400 italic">Tiada lakaran dimuat naik oleh Admin.</p>`; return;
+            container.innerHTML = `<p class="text-[9px] text-gray-400 italic">Pentadbir belum memasukkan apa-apa persempadanan kawasan.</p>`; return;
         }
         let html = ``;
         dynamicShapefilesList.forEach((sf, i) => {
             let chk = (activeShapeLayers[i] !== undefined) ? 'checked' : '';
             html += `<label class="flex items-center space-x-2 text-[10px] font-bold text-gray-700 cursor-pointer hover:bg-blue-100 p-1 rounded transition select-none">
-               <input type="checkbox" onchange="toggleShapefile(${i}, this.checked, '${sf.url}', '${sf.color}')" class="rounded border-blue-300" ${chk}> <span class="truncate w-full">${sf.name}</span>
+               <input type="checkbox" onchange="toggleShapefile(${i}, this.checked, '${sf.url}', '${sf.color}')" class="rounded border-blue-300 w-[12px] h-[12px]" ${chk}> <span class="truncate w-full">${sf.name}</span>
             </label>`;
         });
         container.innerHTML = html;
@@ -458,22 +474,19 @@
 
     function toggleShapefile(index, isChecked, url, colorHex) {
         if(isChecked) {
-            Swal.fire({title: "Memuat Peta Bentuk...", toast:true, position: "top-end", showConfirmButton: false, timer: 1500});
-            // Gunakan omnivore untuk Parse URL Geojson
-            let customStyle = { color: colorHex, weight: 2, fillOpacity: 0.15 };
+            Swal.fire({title: "Memuat Lakaran Area...", toast:true, position: "top-end", showConfirmButton: false, timer: 1500});
+            let customStyle = { color: colorHex, weight: 2.5, fillOpacity: 0.1 };
             let layerObj = omnivore.geojson(url, null, L.geoJson(null, {style: customStyle}));
-            layerObj.addTo(map);
-            activeShapeLayers[index] = layerObj; // Simpan rujukan untuk dimusnahkan nanti
+            layerObj.addTo(map); activeShapeLayers[index] = layerObj; 
         } else {
             if(activeShapeLayers[index]) {
-                map.removeLayer(activeShapeLayers[index]);
-                delete activeShapeLayers[index];
+                map.removeLayer(activeShapeLayers[index]); delete activeShapeLayers[index];
             }
         }
     }
 
     // ==========================================
-    // ANGGOTA TETINGKAP PENTADBIR (ADMIN UI)
+    // PUSAT KAWALAN PENTADBIR UI
     // ==========================================
     function openAdminModal() { document.getElementById('admin-modal-overlay').style.display = 'flex'; }
     function closeAdminModal() { 
@@ -485,9 +498,7 @@
     }
 
     function verifyAdmin() {
-       let p = document.getElementById('admin-pwd').value;
-       if(p === "") return;
-       // Validasi secara Mock dahulu (Pengesahan sebenar dibuat ketika save button)
+       let p = document.getElementById('admin-pwd').value; if(p === "") return;
        document.getElementById('admin-auth-panel').classList.add('hidden');
        let panelSet = document.getElementById('admin-settings-panel');
        panelSet.classList.remove('hidden'); panelSet.classList.add('flex');
@@ -495,26 +506,24 @@
     }
 
     function buildAdminUI() {
-        // Bina Borang Lajur
         let colRender = ``;
         globalHeaders.forEach((h, i) => {
             if(!h.toLowerCase().includes('lat') && !h.toLowerCase().includes('log')) {
                 let isChecked = dynamicAllowedFilterIndices.includes(i) ? 'checked' : '';
-                colRender += `<label class="flex items-center space-x-1 border p-1 rounded hover:bg-gray-50 text-[10px] font-bold cursor-pointer">
-                    <input type="checkbox" class="admin-col-chk" value="${i}" ${isChecked}> <span class="truncate">${h}</span>
+                colRender += `<label class="flex items-center space-x-1.5 border p-1 rounded hover:bg-gray-50 text-[10px] font-bold cursor-pointer">
+                    <input type="checkbox" class="admin-col-chk w-3 h-3" value="${i}" ${isChecked}> <span class="truncate">${h}</span>
                 </label>`;
             }
         });
         document.getElementById('admin-columns-grid').innerHTML = colRender;
 
-        // Bina Borang Shapefile
         let sfHTML = ``;
         dynamicShapefilesList.forEach((sf, i) => {
             sfHTML += `<div class="flex items-center gap-1 admin-sf-row bg-gray-50 p-1.5 rounded">
                 <input type="color" class="admin-sf-color w-6 h-6 p-0 border-0 cursor-pointer" value="${sf.color}">
-                <input type="text" class="admin-sf-name w-1/3 text-[10px] p-1 border rounded bg-white" value="${sf.name}" placeholder="Tajuk Menu (Cth: Blok A)">
-                <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" value="${sf.url}" placeholder="URL GeoJSON">
-                <button onclick="this.parentElement.remove()" class="text-red-500 font-black px-1.5 hover:bg-red-100 rounded text-xs">✕</button>
+                <input type="text" class="admin-sf-name w-1/3 text-[10px] p-1 border rounded bg-white" value="${sf.name}" placeholder="Cth: Blok A">
+                <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" value="${sf.url}" placeholder="Tampal direct link URL GeoJSON di sini">
+                <button onclick="this.parentElement.remove()" class="text-red-500 font-black px-1.5 hover:bg-red-100 rounded text-xs text-center border">✕</button>
             </div>`;
         });
         document.getElementById('admin-shapefile-list').innerHTML = sfHTML;
@@ -522,61 +531,40 @@
 
     function addAdminShapefileRow() {
         let container = document.getElementById('admin-shapefile-list');
-        let div = document.createElement('div');
-        div.className = "flex items-center gap-1 admin-sf-row bg-gray-50 p-1.5 rounded";
+        let div = document.createElement('div'); div.className = "flex items-center gap-1 admin-sf-row bg-gray-50 p-1.5 rounded";
         div.innerHTML = `<input type="color" class="admin-sf-color w-6 h-6 p-0 border-0 cursor-pointer" value="#1E3A8A">
-            <input type="text" class="admin-sf-name w-1/3 text-[10px] p-1 border rounded bg-white" placeholder="Tajuk (Cth: Hsb)">
-            <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" placeholder="Sila tampal Direct URL (.GeoJSON) di sini">
-            <button onclick="this.parentElement.remove()" class="text-red-500 font-black px-1.5 hover:bg-red-100 rounded text-xs">✕</button>`;
+            <input type="text" class="admin-sf-name w-1/3 text-[10px] p-1 border rounded bg-white" placeholder="Tajuk (Cth: Blok Area JKN)">
+            <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" placeholder="Tampal link format *.geojson sahaja">
+            <button onclick="this.parentElement.remove()" class="text-red-500 font-black px-1.5 hover:bg-red-100 rounded text-xs text-center border">✕</button>`;
         container.appendChild(div);
     }
 
     async function saveAdminSettings() {
         let pwd = document.getElementById('admin-pwd').value;
-        let finalCols = [];
-        document.querySelectorAll('.admin-col-chk:checked').forEach(c => finalCols.push(parseInt(c.value)));
-        
+        let finalCols = []; document.querySelectorAll('.admin-col-chk:checked').forEach(c => finalCols.push(parseInt(c.value)));
         let finalShapes = [];
         document.querySelectorAll('.admin-sf-row').forEach(row => {
-            let clr = row.querySelector('.admin-sf-color').value;
-            let n = row.querySelector('.admin-sf-name').value;
-            let u = row.querySelector('.admin-sf-url').value;
+            let clr = row.querySelector('.admin-sf-color').value, n = row.querySelector('.admin-sf-name').value, u = row.querySelector('.admin-sf-url').value;
             if(n && u) finalShapes.push({name: n, url: u, color: clr});
         });
-
-        let payloadParams = {
-            action: 'saveSetting',
-            password: pwd,
-            settingsData: { allowedFilters: finalCols, shapefiles: finalShapes }
-        };
-
-        Swal.fire({title: 'Menyimpan Di Storan Awan...', text: 'JANGAN TUTUP PELAYAR', allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
+        
+        let payloadParams = { action: 'saveSetting', password: pwd, settingsData: { allowedFilters: finalCols, shapefiles: finalShapes } };
+        Swal.fire({title: 'Menyimpan Maklumat Storan...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
         
         try {
-            let req = await fetch(APPS_SCRIPT_URL, {
-                method: "POST",
-                body: JSON.stringify(payloadParams),
-                headers: { "Content-Type": "text/plain;charset=utf-8" } // Pakai Text Plain utk lalui CORS GAS
-            });
+            let req = await fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(payloadParams), headers: { "Content-Type": "text/plain;charset=utf-8" } });
             let ans = await req.json();
-            
             if(ans.status === "error") {
-                Swal.fire("Gagal", ans.message, "error");
-                document.getElementById('admin-pwd').value = "";
-                document.getElementById('admin-auth-panel').classList.remove('hidden');
-                document.getElementById('admin-settings-panel').classList.add('hidden');
-                document.getElementById('admin-settings-panel').classList.remove('flex');
+                Swal.fire("Sistem Keselamatan Disekat", ans.message, "error").then(()=>{ document.getElementById('admin-pwd').value = ""; document.getElementById('admin-auth-panel').classList.remove('hidden'); document.getElementById('admin-settings-panel').classList.add('hidden'); document.getElementById('admin-settings-panel').classList.remove('flex'); });
             } else {
-                Swal.fire("Berjaya!", ans.message, "success").then(() => {
-                    closeAdminModal();
-                    // Refresss settings variable
-                    dynamicAllowedFilterIndices = finalCols; dynamicShapefilesList = finalShapes;
-                    renderPublicShapefileList(); resetFilters();
+                Swal.fire("Berjaya Disahkan!", ans.message, "success").then(() => {
+                    closeAdminModal(); dynamicAllowedFilterIndices = finalCols; dynamicShapefilesList = finalShapes; renderPublicShapefileList(); resetFilters();
                 });
             }
-        } catch(e) { Swal.fire("Ralat Proses", "Kegagalan Network: " + e, "error"); }
+        } catch(e) { Swal.fire("Kegagalan Network Pelayan", "Terdapat gangguan kordinasi API yang sedang melanda perangkaian anda atau CORS disekat dari server tersebut.", "error"); }
     }
 
+    window.onload = initMap;
   </script>
 </body>
 </html>
