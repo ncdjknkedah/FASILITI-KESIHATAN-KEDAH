@@ -39,7 +39,7 @@
     <div class="w-full px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-[60px] items-center">
         <div class="flex items-center font-bold text-sm sm:text-lg tracking-wider">
-          <span class="mr-2">🌍</span> Platform GIS-Web Fasiliti JKN Kedah
+          <span class="mr-2">🌍</span> Geo-Fasiliti Kedah
         </div>
         <div>
           <button onclick="openAdminModal()" class="bg-white text-blue-900 hover:bg-gray-100 px-3 py-1.5 rounded-md transition shadow text-[10px] sm:text-xs font-black border border-gray-300">
@@ -55,14 +55,14 @@
     <div class="grid grid-cols-2 gap-4 flex-shrink-0 py-2 mb-2" id="stats-container">
       <div class="bg-white rounded-xl shadow-sm px-4 py-3 sm:px-6 border-l-[3px] border-blue-500 flex items-center justify-between">
         <div>
-          <h3 class="text-[10px] sm:text-xs text-gray-500 uppercase font-extrabold tracking-wider">Jumlah Fasiliti Ditandakan</h3>
+          <h3 class="text-[10px] sm:text-xs text-gray-500 uppercase font-extrabold tracking-wider">Fasiliti DiPeta</h3>
           <p class="text-2xl sm:text-4xl font-extrabold text-blue-800 mt-[2px] transition-all duration-300" id="stat-total">...</p>
         </div>
         <div class="text-blue-200 text-3xl sm:text-5xl">📍</div>
       </div>
       <div class="bg-white rounded-xl shadow-sm px-4 py-3 sm:px-6 border-l-[3px] border-green-500 flex items-center justify-between">
         <div>
-          <h3 class="text-[10px] sm:text-xs text-gray-500 uppercase font-extrabold tracking-wider">Jumlah Keseluruhan Fasiliti</h3>
+          <h3 class="text-[10px] sm:text-xs text-gray-500 uppercase font-extrabold tracking-wider">Total Database</h3>
           <p class="text-2xl sm:text-4xl font-extrabold text-green-800 mt-[2px]" id="stat-total-db">...</p>
         </div>
         <div class="text-green-200 text-3xl sm:text-5xl">🏢</div>
@@ -163,6 +163,19 @@
           <div id="admin-settings-panel" class="hidden flex-col flex-grow overflow-hidden bg-slate-50">
              <div class="p-4 overflow-y-auto filter-scroll flex-grow">
                  
+                 <!-- Bahagian Utama: Pautan Google Sheet -->
+                 <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-green-500 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative overflow-hidden">
+                    <div class="absolute -right-6 -top-6 text-green-100 opacity-50 rotate-12 pointer-events-none" style="font-size: 80px;">📊</div>
+                    <div class="relative z-10">
+                        <h3 class="font-black text-green-800 text-xs mb-1 uppercase tracking-widest flex items-center gap-1">Pangkalan Data Utama Sistem</h3>
+                        <p class="text-[10px] text-gray-500 max-w-[350px] leading-tight">Akses terus ke ruangan Google Sheets untuk membuat semakan, kemas kini perincian fasiliti atau pantau data mentah Geo-Kesihatan Kedah.</p>
+                    </div>
+                    <a href="https://docs.google.com/spreadsheets/d/1N4WrOaZ479SorzbNKGxEaU3EzObIMrF3pefDvs-FH2E/edit?gid=0#gid=0" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-extrabold text-[10px] px-4 py-2.5 rounded shadow-lg uppercase tracking-wide transition flex-shrink-0 flex items-center gap-1.5 relative z-10 w-full sm:w-auto justify-center">
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM5 19V5h14v14H5zm2-12h10v2H7zm0 4h10v2H7zm0 4h7v2H7z"/></svg> 
+                        BUKA GOOGLE SHEETS
+                    </a>
+                 </div>
+
                  <!-- Bahagian 1: Senarai Shapefile -->
                  <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                     <h3 class="font-black text-blue-800 text-xs mb-2 uppercase border-b pb-1">1. Ruang Shapefile Peta (.GeoJSON)</h3>
