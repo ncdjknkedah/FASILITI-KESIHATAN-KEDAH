@@ -520,7 +520,7 @@
 
     function toggleShapefile(index, isChecked, url, colorHex) {
         if(isChecked) {
-            Swal.fire({title: "Memuat Lakaran Area...", text: "Sedang menarik fail. Sila tunggu sebentar...", toast:true, position: "top-end", showConfirmButton: false, timer: 2000});
+            Swal.fire({title: "Menarik Fail Peta...", text: "Peta sedang dimuat turun. Sila tunggu...", toast:true, position: "top-end", showConfirmButton: false, didOpen: () => { Swal.showLoading() }});
             let customStyle = { color: colorHex, weight: 2.5, fillOpacity: 0.1 };
             
             let layerObj;
@@ -536,6 +536,8 @@
                 let checkboxEl = document.getElementById(`shape-chk-${index}`);
                 if(checkboxEl) checkboxEl.checked = false;
                 if(activeShapeLayers[index]) { map.removeLayer(activeShapeLayers[index]); delete activeShapeLayers[index]; }
+            }).on('ready', function() {
+                Swal.close(); // Tutup mod loading apabila fail sedia dipaparkan
             });
 
             layerObj.addTo(map); activeShapeLayers[index] = layerObj; 
