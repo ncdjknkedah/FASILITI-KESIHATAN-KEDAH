@@ -113,12 +113,17 @@
       </button>
 
       <!-- Ruang Utama Peta -->
-      <div class="flex-grow bg-white rounded-xl shadow-md relative ring-1 ring-gray-200 overflow-hidden h-full z-10 w-full min-h-[300px]">
+      <div id="map-wrapper" class="flex-grow bg-white rounded-xl shadow-md relative ring-1 ring-gray-200 overflow-hidden h-full z-10 w-full min-h-[300px] transition-all duration-300">
         <!-- Peta Leaflet Berada Didalam Kotak Mutlak -->
         <div id="map"></div>
 
         <!-- ALAT KAWALAN PETA BOLEH SERET / SOROK -->
         <div id="draggable-tools">
+           <!-- Butang Map Penuh -->
+           <button id="fullscreen-btn" onclick="toggleMapFullscreen()" class="bg-gray-800 text-white px-4 py-2 text-xs shadow-lg rounded-md border border-gray-700 font-extrabold transition w-full text-center hover:bg-black">
+              ⛶ MAP PENUH
+           </button>
+
            <!-- Butang Papar Nama -->
            <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 transition w-full text-center">
               🏷️ PAPAR NAMA
@@ -231,7 +236,7 @@
       map = L.map('map', {zoomControl: false}).setView([6.1184, 100.3685], 9);
       L.control.zoom({ position: 'topleft' }).addTo(map);
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© JKN Kedah', maxZoom: 18 }).addTo(map);
+      L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20, attribution: '© Google Maps | © JKN Kedah' }).addTo(map);
       markersLayer.addTo(map);
 
       // Alat seret
@@ -361,6 +366,33 @@
         setTimeout(() => { map.invalidateSize(); }, 350);
     }
     function toggleLegendContent() { let c = document.getElementById("legend-content"); c.style.display = c.style.display === "none" ? "block" : "none"; }
+    
+    let isFullscreen = false;
+    function toggleMapFullscreen() {
+        isFullscreen = !isFullscreen;
+        let wrapper = document.getElementById('map-wrapper');
+        let btn = document.getElementById('fullscreen-btn');
+        let tools = document.getElementById('draggable-tools');
+        
+        if (isFullscreen) {
+            wrapper.classList.remove('relative', 'rounded-xl', 'ring-1', 'z-10');
+            wrapper.classList.add('fixed', 'inset-0', 'z-[9999]', 'rounded-none');
+            btn.innerHTML = `✕ TUTUP PENUH`;
+            btn.className = "bg-red-600 text-white px-4 py-2 text-xs shadow-lg rounded-md border border-red-700 font-extrabold transition w-full text-center hover:bg-red-800 cursor-pointer";
+        } else {
+            wrapper.classList.add('relative', 'rounded-xl', 'ring-1', 'z-10');
+            wrapper.classList.remove('fixed', 'inset-0', 'z-[9999]', 'rounded-none');
+            btn.innerHTML = `⛶ MAP PENUH`;
+            btn.className = "bg-gray-800 text-white px-4 py-2 text-xs shadow-lg rounded-md border border-gray-700 font-extrabold transition w-full text-center hover:bg-black cursor-pointer";
+            
+            // Atasi masalah kotak hilang (terkeluar luar kotak) apabila tutup mode paparan penuh
+            tools.style.transform = '';
+            tools.style.left = '';
+            tools.style.top = '';
+        }
+        setTimeout(() => { map.invalidateSize(); }, 350);
+    }
+
     function toggleNamaFasiliti() {
         isLabelVisible = !isLabelVisible; let btn = document.getElementById("toggle-label-btn");
         if(isLabelVisible) { btn.innerHTML = `🚫 SOROK NAMA`; btn.className = "px-4 py-2 text-xs shadow-[0_3px_10px_rgba(220,38,38,0.4)] rounded-md border-2 border-red-700 font-black text-white bg-red-600 transition w-full text-center hover:bg-red-700 cursor-pointer"; } 
