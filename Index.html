@@ -178,8 +178,8 @@
 
                  <!-- Bahagian 1: Senarai Shapefile -->
                  <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                    <h3 class="font-black text-blue-800 text-xs mb-2 uppercase border-b pb-1">1. Ruang Shapefile Peta (.GeoJSON)</h3>
-                    <p class="text-[10px] text-gray-500 mb-3">Masukkan nama dan pautan URL *raw* bagi bentuk sempadan. Pengguna awam akan boleh mengaktifkan garisan ini pada Peta mereka.</p>
+                    <h3 class="font-black text-blue-800 text-xs mb-2 uppercase border-b pb-1">1. Ruang Shapefile Peta (.GeoJSON / .KML)</h3>
+                    <p class="text-[10px] text-gray-500 mb-3">Masukkan nama dan pautan URL *raw* bagi bentuk sempadan. Sistem kini menyokong format **.geojson** dan juga **.kml** secara terus.</p>
                     <div id="admin-shapefile-list" class="space-y-2 mb-3"></div>
                     <button onclick="addAdminShapefileRow()" class="text-[10px] bg-blue-50 text-blue-700 font-extrabold px-3 py-1.5 rounded border border-blue-200 hover:bg-blue-100">+ Tambah Sempadan Baru</button>
                  </div>
@@ -489,7 +489,14 @@
         if(isChecked) {
             Swal.fire({title: "Memuat Lakaran Area...", toast:true, position: "top-end", showConfirmButton: false, timer: 1500});
             let customStyle = { color: colorHex, weight: 2.5, fillOpacity: 0.1 };
-            let layerObj = omnivore.geojson(url, null, L.geoJson(null, {style: customStyle}));
+            
+            let layerObj;
+            if(url.toLowerCase().includes('.kml')) {
+                layerObj = omnivore.kml(url, null, L.geoJson(null, {style: customStyle}));
+            } else {
+                layerObj = omnivore.geojson(url, null, L.geoJson(null, {style: customStyle}));
+            }
+            
             layerObj.addTo(map); activeShapeLayers[index] = layerObj; 
         } else {
             if(activeShapeLayers[index]) {
@@ -535,7 +542,7 @@
             sfHTML += `<div class="flex items-center gap-1 admin-sf-row bg-gray-50 p-1.5 rounded">
                 <input type="color" class="admin-sf-color w-6 h-6 p-0 border-0 cursor-pointer" value="${sf.color}">
                 <input type="text" class="admin-sf-name w-1/3 text-[10px] p-1 border rounded bg-white" value="${sf.name}" placeholder="Cth: Blok A">
-                <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" value="${sf.url}" placeholder="Tampal direct link URL GeoJSON di sini">
+                <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" value="${sf.url}" placeholder="Tampal direct link URL GeoJSON / KML di sini">
                 <button onclick="this.parentElement.remove()" class="text-red-500 font-black px-1.5 hover:bg-red-100 rounded text-xs text-center border">✕</button>
             </div>`;
         });
@@ -547,7 +554,7 @@
         let div = document.createElement('div'); div.className = "flex items-center gap-1 admin-sf-row bg-gray-50 p-1.5 rounded";
         div.innerHTML = `<input type="color" class="admin-sf-color w-6 h-6 p-0 border-0 cursor-pointer" value="#1E3A8A">
             <input type="text" class="admin-sf-name w-1/3 text-[10px] p-1 border rounded bg-white" placeholder="Tajuk (Cth: Blok Area JKN)">
-            <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" placeholder="Tampal link format *.geojson sahaja">
+            <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" placeholder="Tampal link format *.geojson ATAU *.kml">
             <button onclick="this.parentElement.remove()" class="text-red-500 font-black px-1.5 hover:bg-red-100 rounded text-xs text-center border">✕</button>`;
         container.appendChild(div);
     }
