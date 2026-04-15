@@ -474,6 +474,7 @@
           let markerElement = L.marker([lat, lng], {icon: getCustomIcon(markerColor)});
           markerElement.bindPopup(popupContent, {maxWidth: 320, closeButton: false});
           markerElement.on('mouseover', function(e) { this.openPopup(); });
+          markerElement.on('mouseout', function(e) { this.closePopup(); });
 
           if(isLabelVisible && namaTertentu !== "Tiada Nama Didaftarkan") {
               markerElement.bindTooltip(namaTertentu, { permanent: true, direction: "right", offset: [15, -15], className: "custom-map-label" });
@@ -511,7 +512,7 @@
         dynamicShapefilesList.forEach((sf, i) => {
             let chk = (activeShapeLayers[i] !== undefined) ? 'checked' : '';
             html += `<label class="flex items-center space-x-2 text-[10px] font-bold text-gray-700 cursor-pointer hover:bg-blue-100 p-1 rounded transition select-none">
-               <input type="checkbox" onchange="toggleShapefile(${i}, this.checked, '${sf.url}', '${sf.color}')" class="rounded border-blue-300 w-[12px] h-[12px]" ${chk}> <span class="truncate w-full">${sf.name}</span>
+               <input id="shape-chk-${i}" type="checkbox" onchange="toggleShapefile(${i}, this.checked, '${sf.url}', '${sf.color}')" class="rounded border-blue-300 w-[12px] h-[12px]" ${chk}> <span class="truncate w-full">${sf.name}</span>
             </label>`;
         });
         container.innerHTML = html;
@@ -519,7 +520,7 @@
 
     function toggleShapefile(index, isChecked, url, colorHex) {
         if(isChecked) {
-            Swal.fire({title: "Memuat Lakaran Area...", toast:true, position: "top-end", showConfirmButton: false, timer: 1500});
+            Swal.fire({title: "Memuat Lakaran Area...", text: "Sedang menarik fail. Sila tunggu sebentar...", toast:true, position: "top-end", showConfirmButton: false, timer: 2000});
             let customStyle = { color: colorHex, weight: 2.5, fillOpacity: 0.1 };
             
             let layerObj;
@@ -529,6 +530,14 @@
                 layerObj = omnivore.geojson(url, null, L.geoJson(null, {style: customStyle}));
             }
             
+            // Pengendalian Ralat (Error Handling) Jika Gagal Membaca Fail / URL Raw Salah
+            layerObj.on('error', function(err) {
+                Swal.fire("Akses Fail Gagal / Disekat", "Sistem gagal membaca fail sempadan tersebut. Sila pastikan anda meletakkan pautan <b>URL jenis 'RAW'</b> dari GitHub secara terus (bukannya pautan laman web GitHub).<br><br><span style='font-size:10px; color:red;'>Pautan gagal: " + url + "</span>", "error");
+                let checkboxEl = document.getElementById(`shape-chk-${index}`);
+                if(checkboxEl) checkboxEl.checked = false;
+                if(activeShapeLayers[index]) { map.removeLayer(activeShapeLayers[index]); delete activeShapeLayers[index]; }
+            });
+
             layerObj.addTo(map); activeShapeLayers[index] = layerObj; 
         } else {
             if(activeShapeLayers[index]) {
