@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Geo-Kesihatan Kedah</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <style>
+    body { overflow: hidden; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .filter-scroll::-webkit-scrollbar { width: 6px; }
+    .filter-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 6px; }
+    
+    .leaflet-tooltip.custom-map-label { background-color: rgba(255, 255, 255, 0.95); border: 1px solid #64748b; font-size: 8.5px; font-weight: 700; padding: 2px 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); color: #1e3a8a; white-space: nowrap; }
+    
+    #draggable-tools { position: absolute; bottom: 20px; right: 20px; z-index: 1000; cursor: grab; display: flex; flex-direction: column; gap: 8px; }
+    #draggable-tools:active { cursor: grabbing; }
+    
+    .legend-box { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); border: 2px solid #e2e8f0; min-width: 150px; }
+    .legend-color-box { width: 14px; height: 14px; border-radius: 50%; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.4); margin-right: 6px; }
+    
+    #sidebar { transition: margin-left 0.3s ease-in-out; }
+    .sidebar-hidden { margin-left: -350px; }
+    
+    /* Pengikat Peta Mutlak Untuk Padam Masalah "Blank Map" */
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; background: #e2e8f0; }
+
+    #admin-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; align-items: center; }
+    .modal-content-scale { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes modalPop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col relative w-full">
+
+  <!-- Navigasi -->
+  <nav class="bg-blue-900 text-white shadow-lg flex-shrink-0 z-50 h-[60px]">
+    <div class="w-full px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-[60px] items-center">
+        <div class="flex items-center font-bold text-sm sm:text-lg tracking-wider">
+          <span class="mr-2">🌍</span> HUB GEO-ANALISA PERKHIDMATAN KESIHATAN NEGERI KEDAH
+        </div>
+        <div>
+          <button onclick="openAdminModal()" class="bg-white text-blue-900 hover:bg-gray-100 px-3 py-1.5 rounded-md transition shadow text-[10px] sm:text-xs font-black border border-gray-300">
+            ⚙️ <span class="hidden sm:inline uppercase">Pentadbir Sistem</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="flex flex-col flex-grow w-full h-[calc(100vh-60px)] px-4 pb-4 pt-2">
+    <!-- Bar Statistik Indikator -->
+    <div class="grid grid-cols-2 gap-4 flex-shrink-0 py-2 mb-2" id="stats-container">
+      <div class="bg-white rounded-xl shadow-sm px-4 py-3 sm:px-6 border-l-[3px] border-blue-500 flex items-center justify-between">
+        <div>
+          <h3 class="text-[10px] sm:text-xs text-gray-500 uppercase font-extrabold tracking-wider">Bilangan Fasiliti Di Paparan</h3>
+          <p class="text-2xl sm:text-4xl font-extrabold text-blue-800 mt-[2px] transition-all duration-300" id="stat-total">...</p>
+        </div>
+        <div class="text-blue-200 text-3xl sm:text-5xl">📍</div>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm px-4 py-3 sm:px-6 border-l-[3px] border-green-500 flex items-center justify-between">
+        <div>
+          <h3 class="text-[10px] sm:text-xs text-gray-500 uppercase font-extrabold tracking-wider">Jumlah Keseluruhan Fasiliti</h3>
+          <p class="text-2xl sm:text-4xl font-extrabold text-green-800 mt-[2px]" id="stat-total-db">...</p>
+        </div>
+        <div class="text-green-200 text-3xl sm:text-5xl">🏢</div>
+      </div>
+    </div>
+
+    <!-- Sistem Berpusat: Panel Kiri & Peta Kanan -->
+    <div class="flex flex-grow min-h-0 gap-4 relative w-full">
+      
+      <!-- KOTAK PANEL SIDEBAR -->
+      <div id="sidebar" class="w-[330px] flex-shrink-0 bg-white/95 backdrop-blur rounded-xl shadow-[0_4px_15px_rgba(0,0,0,0.1)] border border-gray-200 flex flex-col z-20 h-full">
+        <div class="flex justify-between items-center border-b p-3 bg-gray-50 rounded-t-xl">
+           <div>
+               <h3 class="font-extrabold text-[15px] text-gray-800 leading-none">Pengurusan Peta/Sempadan</h3>
+               <p class="text-[10px] text-gray-500 mt-1">Sistem Tapisan Pintar</p>
+           </div>
+           <button onclick="toggleSidebar()" class="text-gray-400 hover:text-red-500 hover:bg-gray-200 p-1.5 rounded transition" title="Sorok Sidebar">
+               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+           </button>
+        </div>
+        
+        <!-- Pilihan Overlay Sempadan (Shapefile) -->
+        <div class="bg-blue-50/50 p-2.5 border-b border-blue-100">
+           <h4 class="text-[10px] font-extrabold text-blue-900 mb-1.5 uppercase tracking-wide">LAYAR SEMPADAN (SHAPEFILE)</h4>
+           <div id="public-shapefile-list" class="space-y-1.5 max-h-[80px] overflow-y-auto filter-scroll">
+              <p class="text-[9px] text-gray-400 italic">Memuat maklumat pentadbir...</p>
+           </div>
+        </div>
+        
+        <!-- Zon Skroll Kumpulan Carian -->
+        <div class="overflow-y-auto filter-scroll p-3 flex-grow" id="dynamic-groups-container"></div>
+        
+        <div class="px-3 pb-2 pt-1">
+            <button onclick="addGroup()" class="w-full border-2 border-dashed border-blue-300 bg-blue-50 text-blue-700 py-2 rounded-md hover:bg-blue-100 font-extrabold text-[11px] transition">
+                ➕ TAMBAH KUMPULAN (OR)
+            </button>
+        </div>
+
+        <div class="p-3 border-t border-gray-200 bg-white rounded-b-xl grid grid-cols-2 gap-2">
+          <button onclick="applyFilters()" class="col-span-2 bg-blue-700 text-white py-2 rounded-md hover:bg-blue-800 transition shadow font-extrabold tracking-wide text-xs">🔍 CARIAN DI PETA</button>
+          <button onclick="resetFilters()" class="col-span-2 bg-gray-100 text-gray-700 py-1.5 rounded-md hover:bg-gray-200 transition font-bold border border-gray-300 text-[10px]">♻️ RESET</button>
+        </div>
+      </div>
+
+      <!-- KOTAK PETA (Hanya map berada di bahagian ini bagi memastikan kesempurnaan grid) -->
+      <button id="show-sidebar-btn" onclick="toggleSidebar()" class="hidden absolute top-4 left-0 z-[1001] bg-blue-900 text-white p-2 rounded-r-lg shadow-[4px_0_10px_rgba(0,0,0,0.3)] hover:bg-blue-800 transition border-y border-r border-blue-500">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+      </button>
+
+      <!-- Ruang Utama Peta -->
+      <div id="map-wrapper" class="flex-grow bg-white rounded-xl shadow-md relative ring-1 ring-gray-200 overflow-hidden h-full z-10 w-full min-h-[300px] transition-all duration-300">
+        <!-- Peta Leaflet Berada Didalam Kotak Mutlak -->
+        <div id="map"></div>
+
+        <!-- ALAT KAWALAN PETA BOLEH SERET / SOROK -->
+        <div id="draggable-tools">
+           <!-- Butang Map Penuh -->
+           <button id="fullscreen-btn" onclick="toggleMapFullscreen()" class="bg-gray-800 text-white px-4 py-2 text-xs shadow-lg rounded-md border border-gray-700 font-extrabold transition w-full text-center hover:bg-black">
+              ⛶ MAP PENUH
+           </button>
+
+           <!-- Butang Papar Nama -->
+           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 transition w-full text-center">
+              🏷️ PAPAR NAMA
+           </button>
+           
+           <!-- Kotak Lagend -->
+           <div class="legend-box group">
+               <div class="flex justify-between items-center border-b border-gray-200 pb-1 mb-2">
+                  <h4 class="font-extrabold text-[11px] text-gray-800 uppercase tracking-wide" style="cursor: grab;">Petunjuk Semasa</h4>
+                  <button onclick="toggleLegendContent()" class="text-xs text-blue-500 font-extrabold p-1 w-6 h-6 hover:bg-blue-50 rounded" title="Sorok/Buka Menu">-</button>
+               </div>
+               <div id="legend-content" class="space-y-1.5 transition-all max-h-[150px] overflow-y-auto filter-scroll pr-1">
+                  <p class="text-[10px] text-gray-400 italic">Sistem memuat naik data...</p>
+               </div>
+           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL KHAS: PENTADBIR -->
+  <div id="admin-modal-overlay">
+      <div class="bg-white rounded-xl shadow-2xl w-[90%] max-w-[650px] max-h-[90vh] flex flex-col modal-content-scale relative overflow-hidden ring-4 ring-blue-500/30">
+          
+          <div class="p-4 bg-blue-900 text-white flex justify-between items-center border-b border-blue-800 flex-shrink-0">
+             <div>
+                <h2 class="font-black tracking-widest uppercase text-sm">Pusat Kawalan Pentadbir WebGIS</h2>
+                <p class="text-[10px] text-blue-200 mt-1 italic">Susunan ini akan disimpan pada pangkalan Cloud secara kekal.</p>
+             </div>
+             <button onclick="closeAdminModal()" class="text-white hover:text-red-400 bg-blue-800 hover:bg-blue-700 p-1.5 rounded transition font-bold">TUTUP ✕</button>
+          </div>
+
+          <!-- Kata Laluan Mask -->
+          <div id="admin-auth-panel" class="p-8 flex flex-col items-center justify-center flex-grow bg-slate-50">
+             <div class="text-[4rem] mb-2 text-blue-800">🔐</div>
+             <p class="text-xs font-bold text-gray-600 uppercase tracking-widest mb-4">Pengesahan Pihak Pengurusan</p>
+             <input type="password" id="admin-pwd" placeholder="Masukkan Kata Laluan..." class="w-full max-w-[300px] p-2.5 border-2 border-gray-300 rounded focus:border-blue-500 text-center font-bold tracking-widest">
+             <button onclick="verifyAdmin()" class="mt-4 bg-blue-700 text-white px-6 py-2 rounded font-extrabold uppercase text-xs shadow hover:bg-blue-800">Sahkan Akses Sistem</button>
+          </div>
+
+          <!-- KANDUNGAN TETAPAN -->
+          <div id="admin-settings-panel" class="hidden flex-col flex-grow overflow-hidden bg-slate-50">
+             <div class="p-4 overflow-y-auto filter-scroll flex-grow">
+                 
+                 <!-- Bahagian Utama: Pautan Google Sheet -->
+                 <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-green-500 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 relative overflow-hidden">
+                    <div class="absolute -right-6 -top-6 text-green-100 opacity-50 rotate-12 pointer-events-none" style="font-size: 80px;">📊</div>
+                    <div class="relative z-10">
+                        <h3 class="font-black text-green-800 text-xs mb-1 uppercase tracking-widest flex items-center gap-1">Pangkalan Data Utama Sistem</h3>
+                        <p class="text-[10px] text-gray-500 max-w-[350px] leading-tight">Akses terus ke ruangan Google Sheets untuk membuat semakan, kemas kini perincian fasiliti atau pantau data mentah Geo-Kesihatan Kedah.</p>
+                    </div>
+                    <a href="https://docs.google.com/spreadsheets/d/1N4WrOaZ479SorzbNKGxEaU3EzObIMrF3pefDvs-FH2E/edit?gid=0#gid=0" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-extrabold text-[10px] px-4 py-2.5 rounded shadow-lg uppercase tracking-wide transition flex-shrink-0 flex items-center gap-1.5 relative z-10 w-full sm:w-auto justify-center">
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM5 19V5h14v14H5zm2-12h10v2H7zm0 4h10v2H7zm0 4h7v2H7z"/></svg> 
+                        BUKA GOOGLE SHEETS
+                    </a>
+                 </div>
+
+                 <!-- Bahagian 1: Senarai Shapefile -->
+                 <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="font-black text-blue-800 text-xs mb-2 uppercase border-b pb-1">1. Ruang Shapefile Peta (.GeoJSON / .KML)</h3>
+                    <p class="text-[10px] text-gray-500 mb-3">Masukkan nama dan pautan URL *raw* bagi bentuk sempadan. Sistem kini menyokong format **.geojson** dan juga **.kml** secara terus.</p>
+                    <div id="admin-shapefile-list" class="space-y-2 mb-3"></div>
+                    <button onclick="addAdminShapefileRow()" class="text-[10px] bg-blue-50 text-blue-700 font-extrabold px-3 py-1.5 rounded border border-blue-200 hover:bg-blue-100">+ Tambah Sempadan Baru</button>
+                 </div>
+
+                 <!-- Bahagian 2: Pilihan Kolum Dinamik -->
+                 <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="font-black text-blue-800 text-xs mb-2 uppercase border-b pb-1">2. Penentuan Lajur (Kolum) Carian Dibenarkan</h3>
+                    <p class="text-[10px] text-gray-500 mb-3">Tanda pangkahkan (Check) pada Kolum yang *AKAN KELUAR* di Menu Filter Pengguna Awam.</p>
+                    <div id="admin-columns-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                       <!-- Checkbox Kolum Disenaraikan Disini -->
+                    </div>
+                 </div>
+             </div>
+
+             <div class="p-3 bg-blue-50/50 border-t border-gray-200 flex justify-end gap-2 flex-shrink-0">
+                <button onclick="closeAdminModal()" class="px-4 py-2 bg-gray-200 font-bold text-gray-700 text-xs rounded hover:bg-gray-300">Batal</button>
+                <button onclick="saveAdminSettings()" class="px-5 py-2 bg-green-600 font-extrabold text-white text-xs rounded shadow-lg hover:bg-green-700 uppercase">💾 Simpan Susunan Ke Sistem Utama</button>
+             </div>
+          </div>
+      </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://api.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js"></script>
+
+  <script>
+    // =========================================================
+    // PERHATIAN: Masukkan Google Web App URL /exec anda
+    // Pastikan Format Web App ini adalah Execute sbg: 'Me' & Access: 'Anyone'
+    // =========================================================
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydQPW0CdQu6dk7Xv_Bu32K4I6Z2S9bBUN1EPdQddXmX67gkhooD9Vhy5bxsrATHUf_Qw/exec"; 
+
+    let map; let markersLayer = L.layerGroup(); 
+    let globalData = []; let globalHeaders = [];
+    
+    // VARIABLES PENTADBIR
+    let dynamicAllowedFilterIndices = []; 
+    let dynamicShapefilesList = []; 
+    let activeShapeLayers = {}; 
+    
+    const baseColors = ['blue', 'red', 'green', 'orange', 'violet', 'gold', 'yellow', 'grey', 'black', 'blue'];
+    const hexColors = ['#2A81CB', '#CB2B3E', '#2AAD27', '#CB8427', '#9C2BCB', '#FFD326', '#CAC428', '#7B7B7B', '#3D3D3D', '#2A81CB'];
+    
+    let categoryColorMap = {}; let groupCount = 0; let rowCount = 0;
+    let isLabelVisible = false; let activeFilterKeysSet = new Set(); 
+
+    function initMap() {
+      // Setup asas kanvas peta
+      map = L.map('map', {zoomControl: false}).setView([6.1184, 100.3685], 9);
+      L.control.zoom({ position: 'topleft' }).addTo(map);
+
+      L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20, attribution: '© Google Maps | © JKN Kedah' }).addTo(map);
+      markersLayer.addTo(map);
+
+      // Alat seret
+      let toolsEl = document.getElementById('draggable-tools');
+      let draggable = new L.Draggable(toolsEl); draggable.enable();
+      L.DomEvent.disableClickPropagation(toolsEl); L.DomEvent.disableScrollPropagation(toolsEl);
+
+      window.addEventListener('resize', ()=> { map.invalidateSize(); });
+      
+      initFullLoad();
+    }
+
+    async function initFullLoad() {
+      // HALANG CRASH JIKA PENGGUNA TERLUPA LETAK URL GAS:
+      if (APPS_SCRIPT_URL.includes("YOUR_GAS_WEB_APP_URL_HERE")) {
+          Swal.fire({
+              icon: 'warning',
+              title: 'Harap Maklum',
+              text: 'Sila gantikan nama link lalai `APPS_SCRIPT_URL` di ruangan kod HTML anda kepada Pautan Google Script (.gs) anda yang telah di-deploy (akhiran /exec) terlebih dahulu.'
+          });
+          return;
+      }
+
+      Swal.fire({title: 'Memuatkan Hub GIS...', text: "Mengambil data berpusat dari pangkalan...", allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
+      
+      try {
+        let reqData = await fetch(`${APPS_SCRIPT_URL}?action=getData`);
+        if(!reqData.ok) throw new Error("Gagal hubungi pelayan data. " + reqData.status);
+        
+        let resData = await reqData.json();
+        if(resData.error) throw new Error(resData.error);
+        if(!resData.data || resData.data.length === 0) throw new Error("Data Kosong / Ralat Bacaan Pangkalan Data.");
+
+        globalData = resData.data; globalHeaders = resData.headers;
+        document.getElementById('stat-total-db').innerText = globalData.length;
+
+        // Ambil Tetapan Bentuk (Shapefiles & Kolum) 
+        let reqSet = await fetch(`${APPS_SCRIPT_URL}?action=getSettings`);
+        let resSet = await reqSet.json();
+        
+        dynamicAllowedFilterIndices = resSet.allowedFilters || [];
+        dynamicShapefilesList = resSet.shapefiles || [];
+
+        renderPublicShapefileList();
+        
+        addGroup(); applyFilters(); Swal.close();
+      } catch (e) { 
+        Swal.fire("Sistem Kesihatan Tergendala", "Semak sambungan anda atau URL Google Apps Script. Mesej Teknikal: " + e.toString(), "error"); 
+      }
+    }
+
+    // --- FUNGSI CARIAN & TAPISAN ---
+    function addGroup() {
+      groupCount++;
+      let container = document.getElementById('dynamic-groups-container');
+      let groupId = `group-id-${groupCount}`;
+      let groupWrapper = document.createElement('div');
+      groupWrapper.id = groupId; 
+      groupWrapper.className = "filter-group-block mb-3"; 
+      
+      let html = `
+        ${groupCount > 1 ? `<div class="text-center mb-3 text-[10px] font-extrabold text-blue-300">-------- ATAU / OR --------</div>` : ''}
+        <div class="px-2 py-3 bg-blue-50/50 border border-blue-100 rounded-lg relative shadow-sm">
+           ${groupCount > 1 ? `<button onclick="document.getElementById('${groupId}').remove()" class="absolute top-[8px] right-[8px] text-red-500 hover:bg-red-100 px-1.5 py-0.5 rounded font-extrabold text-[9px] transition">PADAM</button>` : ''}
+           <h4 class="text-[10px] font-extrabold text-blue-900 mb-2 pb-1 uppercase tracking-wide">KUMP. CARIAN ${groupCount}</h4>
+           <div id="${groupId}-rows" class="space-y-2"></div>
+           <button onclick="addRow('${groupId}')" class="mt-2 text-[9px] tracking-wide font-extrabold bg-white border border-gray-200 text-blue-600 px-2 py-1.5 rounded w-full hover:bg-blue-100 transition shadow-[0_1px_3px_rgba(0,0,0,0.05)]">+ SYARAT (DAN/AND)</button>
+        </div>
+      `;
+      groupWrapper.innerHTML = html; container.appendChild(groupWrapper);
+      addRow(groupId);
+    }
+
+    function addRow(groupId) {
+      rowCount++; const rowId = `filter-row-${rowCount}`;
+      let rowContainer = document.getElementById(`${groupId}-rows`);
+      let wrapper = document.createElement('div');
+      wrapper.id = rowId; 
+      wrapper.className = "filter-row-item pl-2 border-l-[3px] border-blue-400 relative bg-white px-2 py-2 shadow-sm rounded-r-md border border-gray-100";
+      let deleteBtn = rowContainer.children.length > 0 ? `<button onclick="document.getElementById('${rowId}').remove()" class="absolute -top-1 -right-1 text-red-400 font-black hover:text-red-600 text-lg">×</button>` : '';
+      
+      let colOptionsHTML = `<option value="">- Senarai Maklumat Carian -</option>`;
+      dynamicAllowedFilterIndices.forEach(index => { 
+        if(globalHeaders[index]) colOptionsHTML += `<option value="${index}">${globalHeaders[index]}</option>`; 
+      });
+      
+      wrapper.innerHTML = `
+        ${rowContainer.children.length > 0 ? `<div class="text-[8px] text-blue-600 font-black absolute -left-[14px] top-6 bg-blue-50 py-0.5 px-0.5 border border-blue-200 rounded">DAN</div>` : ''}
+        ${deleteBtn}
+        <select class="w-full text-[10px] rounded border border-gray-300 shadow-inner p-1 mb-1 focus:border-blue-500 filter-target-col font-bold text-gray-700" onchange="updateFilterValues(this, '${rowId}')">
+          ${colOptionsHTML}
+        </select>
+        <div class="w-full rounded border border-gray-200 shadow-inner p-1 bg-gray-50 max-h-24 overflow-y-auto filter-scroll filter-target-val-container">
+           <p class="text-gray-400 italic text-[9px] text-center py-0.5">Sila pilih lajur di atas</p>
+        </div>
+      `;
+      rowContainer.appendChild(wrapper);
+    }
+
+    function updateFilterValues(selectElement, rowId) {
+      let colIndex = selectElement.value;
+      let valContainer = document.querySelector(`#${rowId} .filter-target-val-container`);
+      if(colIndex === "") { valContainer.innerHTML = `<p class="text-gray-400 italic text-[9px] text-center py-0.5">Sila pilih lajur...</p>`; return; }
+      let headerName = globalHeaders[colIndex];
+      let uniqueValues = [...new Set(globalData.map(d => String(d[headerName])).filter(d => d && d!=="undefined"))].sort();
+      let html = `<div class="space-y-0.5">
+        <label class="flex items-center space-x-2 text-[9px] font-black text-blue-700 border-b border-gray-200 pb-1 mb-1 cursor-pointer hover:bg-blue-100 px-1 rounded transition select-none">
+          <input type="checkbox" class="rounded w-[10px] h-[10px]" onchange="toggleAllCheckboxes(this, '${rowId}')"> <span>PILIH SEMUA / PADAM</span>
+        </label>`;
+      uniqueValues.forEach(v => { 
+        // Menguruskan petikan (quotes) yang merosakkan parameter value html
+        html += `<label class="flex items-start space-x-1.5 text-[10px] font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 p-1 rounded transition select-none">
+            <input type="checkbox" value="${v.replace(/"/g, '&quot;')}" class="filter-chk rounded border-gray-300 w-[11px] h-[11px] mt-[1px]"><span class="leading-tight">${v}</span>
+          </label>`; 
+      });
+      valContainer.innerHTML = html + `</div>`; valContainer.classList.add("bg-white");
+    }
+
+    function toggleAllCheckboxes(masterCheckbox, rowId) { document.querySelectorAll(`#${rowId} .filter-chk`).forEach(cb => cb.checked = masterCheckbox.checked); }
+    function resetFilters() { document.getElementById('dynamic-groups-container').innerHTML = ''; groupCount = 0; addGroup(); applyFilters(); }
+    
+    // --- AKSI UI PETA ---
+    function toggleSidebar() {
+        let sidebar = document.getElementById('sidebar'); let showBtn = document.getElementById('show-sidebar-btn');
+        if(sidebar.classList.contains('sidebar-hidden')) { sidebar.classList.remove('sidebar-hidden'); showBtn.classList.add('hidden'); } 
+        else { sidebar.classList.add('sidebar-hidden'); showBtn.classList.remove('hidden'); }
+        setTimeout(() => { map.invalidateSize(); }, 350);
+    }
+    function toggleLegendContent() { let c = document.getElementById("legend-content"); c.style.display = c.style.display === "none" ? "block" : "none"; }
+    
+    let isFullscreen = false;
+    function toggleMapFullscreen() {
+        isFullscreen = !isFullscreen;
+        let wrapper = document.getElementById('map-wrapper');
+        let btn = document.getElementById('fullscreen-btn');
+        let tools = document.getElementById('draggable-tools');
+        
+        if (isFullscreen) {
+            wrapper.classList.remove('relative', 'rounded-xl', 'ring-1', 'z-10');
+            wrapper.classList.add('fixed', 'inset-0', 'z-[9999]', 'rounded-none');
+            btn.innerHTML = `✕ TUTUP PENUH`;
+            btn.className = "bg-red-600 text-white px-4 py-2 text-xs shadow-lg rounded-md border border-red-700 font-extrabold transition w-full text-center hover:bg-red-800 cursor-pointer";
+        } else {
+            wrapper.classList.add('relative', 'rounded-xl', 'ring-1', 'z-10');
+            wrapper.classList.remove('fixed', 'inset-0', 'z-[9999]', 'rounded-none');
+            btn.innerHTML = `⛶ MAP PENUH`;
+            btn.className = "bg-gray-800 text-white px-4 py-2 text-xs shadow-lg rounded-md border border-gray-700 font-extrabold transition w-full text-center hover:bg-black cursor-pointer";
+            
+            // Atasi masalah kotak hilang (terkeluar luar kotak) apabila tutup mode paparan penuh
+            tools.style.transform = '';
+            tools.style.left = '';
+            tools.style.top = '';
+        }
+        setTimeout(() => { map.invalidateSize(); }, 350);
+    }
+
+    function toggleNamaFasiliti() {
+        isLabelVisible = !isLabelVisible; let btn = document.getElementById("toggle-label-btn");
+        if(isLabelVisible) { btn.innerHTML = `🚫 SOROK NAMA`; btn.className = "px-4 py-2 text-xs shadow-[0_3px_10px_rgba(220,38,38,0.4)] rounded-md border-2 border-red-700 font-black text-white bg-red-600 transition w-full text-center hover:bg-red-700 cursor-pointer"; } 
+        else { btn.innerHTML = `🏷️ PAPAR NAMA`; btn.className = "bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 transition w-full text-center hover:bg-gray-100 cursor-pointer"; }
+        applyFilters(); 
+    }
+
+    function applyFilters() {
+      let filterGroupsRules = []; activeFilterKeysSet.clear();
+      document.querySelectorAll('.filter-group-block').forEach((groupDiv, gIndex) => {
+        let conditions = [];
+        groupDiv.querySelectorAll('.filter-row-item').forEach(row => {
+          let colIndex = row.querySelector('.filter-target-col').value;
+          if(colIndex !== "") {
+            let checkedBoxes = Array.from(row.querySelectorAll('.filter-chk:checked')).map(cb => cb.value);
+            if(checkedBoxes.length > 0) {
+              let keyName = globalHeaders[colIndex];
+              conditions.push({ colIndex: parseInt(colIndex), key: keyName, values: checkedBoxes });
+              activeFilterKeysSet.add(keyName);
+            }
+          }
+        });
+        if(conditions.length > 0) filterGroupsRules.push({rules: conditions});
+      });
+
+      let filteredData = globalData;
+      if (filterGroupsRules.length > 0) {
+        filteredData = globalData.filter(item => { 
+            return filterGroupsRules.some(group => { return group.rules.every(f => { return f.values.includes(String(item[f.key])); }); }); 
+        });
+      }
+
+      const generateCombinedKey = (item) => {
+        if (filterGroupsRules.length === 0) return item[globalHeaders[3] || globalHeaders[1]]; 
+        for (let group of filterGroupsRules) {
+            let passedGroup = group.rules.every(f => f.values.includes(String(item[f.key])));
+            if (passedGroup) return group.rules.map(f => item[f.key]).join(" | ");
+        }
+        return "Lain-lain";
+      };
+
+      let uniqueShowingTypes = [...new Set(filteredData.map(d => generateCombinedKey(d)).filter(d => d))].sort();
+      categoryColorMap = {};
+      uniqueShowingTypes.forEach((type, index) => { categoryColorMap[type] = { colorName: baseColors[index % baseColors.length], hex: hexColors[index % hexColors.length] }; });
+
+      renderMapMarkers(filteredData, generateCombinedKey);
+    }
+
+    function renderMapMarkers(data, combinedKeyGenerator) {
+      markersLayer.clearLayers();
+      const latCol = globalHeaders.find(h => h.toLowerCase().includes('lat'));
+      const longCol = globalHeaders.find(h => h.toLowerCase().includes('log') || h.toLowerCase().includes('lon'));
+      const colKod = globalHeaders[1]; const colJenis = globalHeaders[3]; const colNama = globalHeaders[6]; 
+
+      data.forEach(item => {
+        let lat = item[latCol], lng = item[longCol];
+        let catValue = combinedKeyGenerator(item); 
+        let markerColor = categoryColorMap[catValue] ? categoryColorMap[catValue].colorName : 'blue';
+        
+        if(lat && lng && !isNaN(lat) && !isNaN(lng)) {
+          let namaTertentu = item[colNama] || "Tiada Nama Didaftarkan";
+          let popupContent = `<div class="p-1 min-w-[220px] max-w-[300px]">`;
+          popupContent += `<h4 class="font-black text-[14px] text-blue-900 border-b-2 border-blue-200 pb-1.5 mb-2">${namaTertentu}</h4>`;
+          if(colKod) popupContent += `<div class="mb-1 bg-gray-50 px-1 py-0.5 rounded"><span class="text-[10px] font-black text-blue-700 uppercase tracking-widest">KOD:</span> <span class="text-[11px] font-bold text-gray-800 ml-1">${item[colKod] || "-"}</span></div>`;
+          if(colJenis) popupContent += `<div class="mb-2 bg-gray-50 px-1 py-0.5 rounded"><span class="text-[10px] font-black text-orange-600 uppercase tracking-widest">JENIS:</span> <span class="text-[11px] font-bold text-gray-800 ml-1">${item[colJenis] || "-"}</span></div>`;
+
+          if(activeFilterKeysSet.size > 0) {
+             let activeContent = ``;
+             activeFilterKeysSet.forEach(key => {
+                 if(key !== colKod && key !== colJenis && key !== colNama) {
+                     let val = item[key] || "Tiada";
+                     activeContent += `<div class="mb-1 text-[11px] flex justify-between"><strong class="text-green-800 uppercase bg-green-100 px-1 rounded truncate max-w-[50%]">${key}</strong> <span class="font-bold text-gray-700 text-right w-[45%]">${val}</span></div>`;
+                 }
+             });
+             if(activeContent) popupContent += `<div class="mt-2 pt-2 border-t border-dashed border-gray-300">` + activeContent + `</div>`;
+          }
+          popupContent += `</div>`;
+          
+          let markerElement = L.marker([lat, lng], {icon: getCustomIcon(markerColor)});
+          markerElement.bindPopup(popupContent, {maxWidth: 320, closeButton: false});
+          markerElement.on('mouseover', function(e) { this.openPopup(); });
+          markerElement.on('mouseout', function(e) { this.closePopup(); });
+
+          if(isLabelVisible && namaTertentu !== "Tiada Nama Didaftarkan") {
+              markerElement.bindTooltip(namaTertentu, { permanent: true, direction: "right", offset: [15, -15], className: "custom-map-label" });
+          }
+          markerElement.addTo(markersLayer);
+        }
+      });
+      
+      updateLegend();
+      let el = document.getElementById('stat-total'); el.innerText = data.length; el.classList.add("scale-125", "text-blue-500"); setTimeout(()=> el.classList.remove("scale-125", "text-blue-500"), 200);
+    }
+
+    function getCustomIcon(colorName) { return new L.Icon({ iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${colorName}.png`, shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [16, 26], iconAnchor: [8, 26], popupAnchor: [1, -22], shadowSize: [26, 26] }); }
+
+    function updateLegend() {
+      let div = document.getElementById('legend-content'); let html = ``; let keys = Object.keys(categoryColorMap);
+      if(keys.length === 0) html += `<p class="text-[10px] italic text-gray-500 mt-2">Sila buat satu tapisan carian</p>`;
+      else {
+        for (let key in categoryColorMap) {
+           html += `<div class="flex items-center space-x-2 py-0.5"><div class="legend-color-box" style="background: ${categoryColorMap[key].hex}"></div> <span class="text-[10px] font-extrabold text-gray-600 uppercase w-full truncate" title="${key}">${key}</span></div>`;
+        }
+      }
+      div.innerHTML = html;
+    }
+
+    // ==========================================
+    // SISTEM PENGURUSAN SHAPEFILE AWAM (UI KIRI)
+    // ==========================================
+    function renderPublicShapefileList() {
+        let container = document.getElementById('public-shapefile-list');
+        if(dynamicShapefilesList.length === 0) {
+            container.innerHTML = `<p class="text-[9px] text-gray-400 italic">Pentadbir belum memasukkan apa-apa persempadanan kawasan.</p>`; return;
+        }
+        let html = ``;
+        dynamicShapefilesList.forEach((sf, i) => {
+            let chk = (activeShapeLayers[i] !== undefined) ? 'checked' : '';
+            html += `<label class="flex items-center space-x-2 text-[10px] font-bold text-gray-700 cursor-pointer hover:bg-blue-100 p-1 rounded transition select-none">
+               <input id="shape-chk-${i}" type="checkbox" onchange="toggleShapefile(${i}, this.checked, '${sf.url}', '${sf.color}')" class="rounded border-blue-300 w-[12px] h-[12px]" ${chk}> <span class="truncate w-full">${sf.name}</span>
+            </label>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function toggleShapefile(index, isChecked, url, colorHex) {
+        if(isChecked) {
+            Swal.fire({title: "Menarik Fail Peta...", text: "Peta sedang dimuat turun. Sila tunggu...", toast:true, position: "top-end", showConfirmButton: false, didOpen: () => { Swal.showLoading() }});
+            let customStyle = { color: colorHex, weight: 2.5, fillOpacity: 0.1 };
+            
+            let layerObj;
+            if(url.toLowerCase().includes('.kml')) {
+                layerObj = omnivore.kml(url, null, L.geoJson(null, {style: customStyle}));
+            } else {
+                layerObj = omnivore.geojson(url, null, L.geoJson(null, {style: customStyle}));
+            }
+            
+            // Pengendalian Ralat (Error Handling) Jika Gagal Membaca Fail / URL Raw Salah
+            layerObj.on('error', function(err) {
+                Swal.fire("Akses Fail Gagal / Disekat", "Sistem gagal membaca fail sempadan tersebut. Sila pastikan anda meletakkan pautan <b>URL jenis 'RAW'</b> dari GitHub secara terus (bukannya pautan laman web GitHub).<br><br><span style='font-size:10px; color:red;'>Pautan gagal: " + url + "</span>", "error");
+                let checkboxEl = document.getElementById(`shape-chk-${index}`);
+                if(checkboxEl) checkboxEl.checked = false;
+                if(activeShapeLayers[index]) { map.removeLayer(activeShapeLayers[index]); delete activeShapeLayers[index]; }
+            }).on('ready', function() {
+                Swal.close(); // Tutup mod loading apabila fail sedia dipaparkan
+            });
+
+            layerObj.addTo(map); activeShapeLayers[index] = layerObj; 
+        } else {
+            if(activeShapeLayers[index]) {
+                map.removeLayer(activeShapeLayers[index]); delete activeShapeLayers[index];
+            }
+        }
+    }
+
+    // ==========================================
+    // PUSAT KAWALAN PENTADBIR UI
+    // ==========================================
+    function openAdminModal() { document.getElementById('admin-modal-overlay').style.display = 'flex'; }
+    function closeAdminModal() { 
+        document.getElementById('admin-modal-overlay').style.display = 'none'; 
+        document.getElementById('admin-pwd').value = "";
+        document.getElementById('admin-auth-panel').classList.remove('hidden');
+        document.getElementById('admin-settings-panel').classList.add('hidden');
+        document.getElementById('admin-settings-panel').classList.remove('flex');
+    }
+
+    function verifyAdmin() {
+       let p = document.getElementById('admin-pwd').value; if(p === "") return;
+       document.getElementById('admin-auth-panel').classList.add('hidden');
+       let panelSet = document.getElementById('admin-settings-panel');
+       panelSet.classList.remove('hidden'); panelSet.classList.add('flex');
+       buildAdminUI();
+    }
+
+    function buildAdminUI() {
+        let colRender = ``;
+        globalHeaders.forEach((h, i) => {
+            if(!h.toLowerCase().includes('lat') && !h.toLowerCase().includes('log')) {
+                let isChecked = dynamicAllowedFilterIndices.includes(i) ? 'checked' : '';
+                colRender += `<label class="flex items-center space-x-1.5 border p-1 rounded hover:bg-gray-50 text-[10px] font-bold cursor-pointer">
+                    <input type="checkbox" class="admin-col-chk w-3 h-3" value="${i}" ${isChecked}> <span class="truncate">${h}</span>
+                </label>`;
+            }
+        });
+        document.getElementById('admin-columns-grid').innerHTML = colRender;
+
+        let sfHTML = ``;
+        dynamicShapefilesList.forEach((sf, i) => {
+            sfHTML += `<div class="flex items-center gap-1 admin-sf-row bg-gray-50 p-1.5 rounded">
+                <input type="color" class="admin-sf-color w-6 h-6 p-0 border-0 cursor-pointer" value="${sf.color}">
+                <input type="text" class="admin-sf-name w-1/3 text-[10px] p-1 border rounded bg-white" value="${sf.name}" placeholder="Cth: Blok A">
+                <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" value="${sf.url}" placeholder="Tampal direct link URL GeoJSON / KML di sini">
+                <button onclick="this.parentElement.remove()" class="text-red-500 font-black px-1.5 hover:bg-red-100 rounded text-xs text-center border">✕</button>
+            </div>`;
+        });
+        document.getElementById('admin-shapefile-list').innerHTML = sfHTML;
+    }
+
+    function addAdminShapefileRow() {
+        let container = document.getElementById('admin-shapefile-list');
+        let div = document.createElement('div'); div.className = "flex items-center gap-1 admin-sf-row bg-gray-50 p-1.5 rounded";
+        div.innerHTML = `<input type="color" class="admin-sf-color w-6 h-6 p-0 border-0 cursor-pointer" value="#1E3A8A">
+            <input type="text" class="admin-sf-name w-1/3 text-[10px] p-1 border rounded bg-white" placeholder="Tajuk (Cth: Blok Area JKN)">
+            <input type="text" class="admin-sf-url w-full text-[10px] p-1 border rounded bg-white" placeholder="Tampal link format *.geojson ATAU *.kml">
+            <button onclick="this.parentElement.remove()" class="text-red-500 font-black px-1.5 hover:bg-red-100 rounded text-xs text-center border">✕</button>`;
+        container.appendChild(div);
+    }
+
+    async function saveAdminSettings() {
+        let pwd = document.getElementById('admin-pwd').value;
+        let finalCols = []; document.querySelectorAll('.admin-col-chk:checked').forEach(c => finalCols.push(parseInt(c.value)));
+        let finalShapes = [];
+        document.querySelectorAll('.admin-sf-row').forEach(row => {
+            let clr = row.querySelector('.admin-sf-color').value, n = row.querySelector('.admin-sf-name').value, u = row.querySelector('.admin-sf-url').value;
+            if(n && u) finalShapes.push({name: n, url: u, color: clr});
+        });
+        
+        let payloadParams = { action: 'saveSetting', password: pwd, settingsData: { allowedFilters: finalCols, shapefiles: finalShapes } };
+        Swal.fire({title: 'Menyimpan Maklumat Storan...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
+        
+        try {
+            let req = await fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify(payloadParams), headers: { "Content-Type": "text/plain;charset=utf-8" } });
+            let ans = await req.json();
+            if(ans.status === "error") {
+                Swal.fire("Sistem Keselamatan Disekat", ans.message, "error").then(()=>{ document.getElementById('admin-pwd').value = ""; document.getElementById('admin-auth-panel').classList.remove('hidden'); document.getElementById('admin-settings-panel').classList.add('hidden'); document.getElementById('admin-settings-panel').classList.remove('flex'); });
+            } else {
+                Swal.fire("Berjaya Disahkan!", ans.message, "success").then(() => {
+                    closeAdminModal(); dynamicAllowedFilterIndices = finalCols; dynamicShapefilesList = finalShapes; renderPublicShapefileList(); resetFilters();
+                });
+            }
+        } catch(e) { Swal.fire("Kegagalan Network Pelayan", "Terdapat gangguan kordinasi API yang sedang melanda perangkaian anda atau CORS disekat dari server tersebut.", "error"); }
+    }
+
+    window.onload = initMap;
+  </script>
+</body>
+</html>
