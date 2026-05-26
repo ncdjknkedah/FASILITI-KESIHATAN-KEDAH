@@ -26,7 +26,7 @@
     
     #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; background: #e2e8f0; }
 
-    /* Modal Pentadbir */
+    /* Modal Pentadbir dengan Z-Index yang betul (di bawah SweetAlert) */
     #admin-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 5000; justify-content: center; align-items: center; }
     .modal-content-scale { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     @keyframes modalPop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
@@ -96,7 +96,7 @@
         </div>
 
         <div class="p-3 border-t border-gray-200 bg-white rounded-b-xl grid grid-cols-2 gap-2">
-          <button onclick="applyFilters()" class="col-span-2 bg-blue-700 text-white py-2 rounded-md hover:bg-blue-800 transition font-extrabold text-xs">🔍 CARIAN DI PETA</button>
+          <button onclick="applyFilters()" class="col-span-2 bg-blue-700 text-white py-2 rounded-md hover:bg-blue-800 transition font-extrabold text-xs shadow">🔍 CARIAN DI PETA</button>
           <button onclick="resetFilters()" class="col-span-2 bg-gray-100 text-gray-700 py-1.5 rounded-md hover:bg-gray-200 transition font-bold border border-gray-300 text-[10px]">♻️ RESET</button>
         </div>
       </div>
@@ -109,22 +109,18 @@
         <div id="map"></div>
 
         <div id="draggable-tools">
-           <button id="fullscreen-btn" onclick="toggleMapFullscreen()" class="bg-gray-800 text-white px-4 py-2 text-xs shadow-lg rounded-md border border-gray-700 font-extrabold w-full text-center hover:bg-black">
+           <button id="fullscreen-btn" onclick="toggleMapFullscreen()" class="bg-gray-800 text-white px-4 py-2 text-xs shadow-lg rounded-md border border-gray-700 font-extrabold w-full hover:bg-black transition">
               ⛶ MAP PENUH
            </button>
-
-           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 w-full text-center">
+           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 w-full hover:bg-gray-50 transition">
               🏷️ PAPAR NAMA
            </button>
-           
-           <div class="legend-box group">
+           <div class="legend-box">
                <div class="flex justify-between items-center border-b border-gray-200 pb-1 mb-2">
                   <h4 class="font-extrabold text-[11px] text-gray-800 uppercase">Petunjuk</h4>
                   <button onclick="toggleLegendContent()" class="text-xs text-blue-500 font-extrabold">-</button>
                </div>
-               <div id="legend-content" class="space-y-1.5 max-h-[150px] overflow-y-auto filter-scroll">
-                  <p class="text-[10px] text-gray-400 italic">Memuat...</p>
-               </div>
+               <div id="legend-content" class="space-y-1.5 max-h-[150px] overflow-y-auto filter-scroll"></div>
            </div>
         </div>
       </div>
@@ -134,7 +130,7 @@
   <div id="admin-modal-overlay">
       <div class="bg-white rounded-xl shadow-2xl w-[90%] max-w-[650px] max-h-[90vh] flex flex-col modal-content-scale relative overflow-hidden ring-4 ring-blue-500/30">
           
-          <div class="p-4 bg-blue-900 text-white flex justify-between items-center border-b border-blue-800 flex-shrink-0">
+          <div class="p-4 bg-blue-900 text-white flex justify-between items-center flex-shrink-0">
               <h2 class="font-black uppercase text-sm tracking-widest">Pusat Kawalan Pentadbir</h2>
               <button onclick="closeAdminModal()" class="text-white hover:text-red-400 font-bold">TUTUP ✕</button>
           </div>
@@ -148,23 +144,23 @@
                 placeholder="Masukkan Kata Laluan..." 
                 class="w-full max-w-[300px] p-2.5 border-2 border-gray-300 rounded focus:border-blue-500 text-center font-bold tracking-widest">
               
-              <button onclick="verifyAdmin()" class="mt-4 bg-blue-700 text-white px-6 py-2 rounded font-extrabold uppercase text-xs shadow hover:bg-blue-800">Sahkan Akses</button>
+              <button onclick="verifyAdmin()" class="mt-4 bg-blue-700 text-white px-6 py-2 rounded font-extrabold uppercase text-xs shadow hover:bg-blue-800 transition">Sahkan Akses</button>
           </div>
 
           <div id="admin-settings-panel" class="hidden flex-col flex-grow overflow-hidden bg-slate-50">
               <div class="p-4 overflow-y-auto filter-scroll flex-grow">
-                  <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-green-500 flex flex-col sm:flex-row justify-between items-center gap-3">
+                  <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-green-500 flex justify-between items-center">
                      <div>
-                         <h3 class="font-black text-green-800 text-xs uppercase">Google Sheets</h3>
-                         <p class="text-[10px] text-gray-500">Pangkalan data utama.</p>
+                         <h3 class="font-black text-green-800 text-xs uppercase">Pangkalan Data</h3>
+                         <p class="text-[10px] text-gray-500">Semak data Google Sheets.</p>
                      </div>
-                     <a href="https://docs.google.com/spreadsheets/d/1N4WrOaZ479SorzbNKGxEaU3EzObIMrF3pefDvs-FH2E/edit?gid=0" target="_blank" class="bg-green-600 text-white font-extrabold text-[10px] px-4 py-2.5 rounded shadow">BUKA GOOGLE SHEETS</a>
+                     <a href="https://docs.google.com/spreadsheets/d/1N4WrOaZ479SorzbNKGxEaU3EzObIMrF3pefDvs-FH2E/edit?gid=0" target="_blank" class="bg-green-600 text-white font-extrabold text-[10px] px-4 py-2 rounded shadow">BUKA</a>
                   </div>
 
                   <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                      <h3 class="font-black text-blue-800 text-xs mb-2 uppercase border-b pb-1">1. Shapefile Peta (.GeoJSON / .KML)</h3>
                      <div id="admin-shapefile-list" class="space-y-2 mb-3"></div>
-                     <button onclick="addAdminShapefileRow()" class="text-[10px] bg-blue-50 text-blue-700 font-extrabold px-3 py-1.5 rounded border">+ Tambah Sempadan</button>
+                     <button onclick="addAdminShapefileRow()" class="text-[10px] bg-blue-50 text-blue-700 font-extrabold px-3 py-1.5 rounded border">+ Tambah</button>
                   </div>
 
                   <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -173,9 +169,9 @@
                   </div>
               </div>
 
-              <div class="p-3 bg-blue-50/50 border-t border-gray-200 flex justify-end gap-2">
-                 <button onclick="closeAdminModal()" class="px-4 py-2 bg-gray-200 font-bold text-gray-700 text-xs rounded">Batal</button>
-                 <button onclick="saveAdminSettings()" class="px-5 py-2 bg-green-600 font-extrabold text-white text-xs rounded shadow">Simpan Perubahan</button>
+              <div class="p-3 bg-blue-50/50 border-t flex justify-end gap-2">
+                 <button onclick="closeAdminModal()" class="px-4 py-2 bg-gray-200 font-bold text-xs rounded">Batal</button>
+                 <button onclick="saveAdminSettings()" class="px-5 py-2 bg-green-600 font-extrabold text-white text-xs rounded shadow">Simpan</button>
               </div>
           </div>
       </div>
@@ -211,22 +207,21 @@
       markersLayer.addTo(map);
 
       let toolsEl = document.getElementById('draggable-tools');
-      let draggable = new L.Draggable(toolsEl); draggable.enable();
+      new L.Draggable(toolsEl).enable();
       L.DomEvent.disableClickPropagation(toolsEl);
 
       initFullLoad();
     }
 
     async function initFullLoad() {
-      Swal.fire({title: 'Memuatkan Data...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() }});
+      Swal.fire({title: 'Memuatkan Data...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
       try {
         let reqData = await fetch(`${APPS_SCRIPT_URL}?action=getData`);
         let resData = await reqData.json();
         
-        // PEMBETULAN: Pastikan headers di-trim untuk padanan data
+        // PEMBETULAN: Trim headers agar sepadan dengan data GAS
         globalHeaders = resData.headers.map(h => h.trim()); 
         globalData = resData.data;
-        
         document.getElementById('stat-total-db').innerText = globalData.length;
 
         let reqSet = await fetch(`${APPS_SCRIPT_URL}?action=getSettings`);
@@ -238,7 +233,7 @@
         addGroup(); 
         applyFilters(); 
         Swal.close();
-      } catch (e) { Swal.fire("Ralat", "Gagal memuat naik pangkalan data.", "error"); }
+      } catch (e) { Swal.fire("Ralat", "Gagal menghubungi pangkalan data.", "error"); }
     }
 
     function addGroup() {
@@ -284,9 +279,9 @@
       if(!idx) return;
       let hName = globalHeaders[idx];
       let values = [...new Set(globalData.map(d => String(d[hName])).filter(v => v && v!=="undefined"))].sort();
-      let html = `<div class="space-y-0.5"><label class="flex items-center space-x-2 text-[9px] font-black text-blue-700"><input type="checkbox" onchange="toggleAllCheckboxes(this, '${rowId}')"> <span>SEMUA</span></label>`;
+      let html = `<div class="space-y-0.5"><label class="flex items-center space-x-2 text-[9px] font-black text-blue-700 cursor-pointer"><input type="checkbox" onchange="toggleAllCheckboxes(this, '${rowId}')"> <span>SEMUA</span></label>`;
       values.forEach(v => {
-        html += `<label class="flex items-center space-x-1.5 text-[10px] p-1 rounded hover:bg-gray-100"><input type="checkbox" value="${v.replace(/"/g, '&quot;')}" class="filter-chk"><span>${v}</span></label>`;
+        html += `<label class="flex items-center space-x-1.5 text-[10px] p-1 rounded hover:bg-gray-100 cursor-pointer"><input type="checkbox" value="${v.replace(/"/g, '&quot;')}" class="filter-chk"><span>${v}</span></label>`;
       });
       container.innerHTML = html + `</div>`;
     }
@@ -358,7 +353,6 @@
       let types = [...new Set(filtered.map(d => getCombinedKey(d)))].sort();
       categoryColorMap = {};
       types.forEach((t, i) => { categoryColorMap[t] = { color: baseColors[i % baseColors.length], hex: hexColors[i % hexColors.length] }; });
-      
       renderMapMarkers(filtered, getCombinedKey);
     }
 
@@ -414,6 +408,7 @@
 
     // --- PENTADBIR ---
     function openAdminModal() { document.getElementById('admin-modal-overlay').style.display = 'flex'; document.getElementById('admin-pwd').focus(); }
+    
     function closeAdminModal() { 
         document.getElementById('admin-modal-overlay').style.display = 'none'; 
         document.getElementById('admin-pwd').value = "";
@@ -425,19 +420,30 @@
         let p = document.getElementById('admin-pwd').value;
         if (!p) return;
         
-        // SWAal akan berada di depan kerana z-index modal sudah dikurangkan
         Swal.fire({ title: 'Mengesahkan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
-            let req = await fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: 'checkPassword', password: p }), headers: { "Content-Type": "text/plain;charset=utf-8" } });
+            let req = await fetch(APPS_SCRIPT_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: 'checkPassword', password: p }), 
+                headers: { "Content-Type": "text/plain;charset=utf-8" } 
+            });
             let ans = await req.json();
+
             if (ans.status === "success") {
                 Swal.close();
                 document.getElementById('admin-auth-panel').classList.add('hidden');
                 document.getElementById('admin-settings-panel').classList.remove('hidden');
                 buildAdminUI();
-            } else { Swal.fire("Akses Ditolak", "Kata laluan salah.", "error"); }
-        } catch (e) { Swal.fire("Ralat Network", "Gagal hubungi pelayan.", "error"); }
+            } else {
+                // PEMBETULAN: Tutup modal admin dulu supaya popup "Akses Ditolak" nampak di depan
+                closeAdminModal();
+                Swal.fire("Akses Ditolak", "Kata laluan salah.", "error");
+            }
+        } catch (e) {
+            closeAdminModal();
+            Swal.fire("Ralat Network", "Gagal menghubungi pelayan.", "error");
+        }
     }
 
     function buildAdminUI() {
@@ -474,11 +480,18 @@
         
         Swal.fire({title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         try {
-            let req = await fetch(APPS_SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: 'saveSetting', password: p, settingsData: { allowedFilters: cols, shapefiles: shapes } }), headers: { "Content-Type": "text/plain;charset=utf-8" } });
+            let req = await fetch(APPS_SCRIPT_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ action: 'saveSetting', password: p, settingsData: { allowedFilters: cols, shapefiles: shapes } }), 
+                headers: { "Content-Type": "text/plain;charset=utf-8" } 
+            });
             let ans = await req.json();
             if(ans.status === "success") { 
                 Swal.fire("Berjaya", ans.message, "success").then(() => location.reload()); 
-            } else { Swal.fire("Ralat", ans.message, "error"); }
+            } else { 
+                closeAdminModal();
+                Swal.fire("Ralat", ans.message, "error"); 
+            }
         } catch(e) { Swal.fire("Ralat", "Gagal menyimpan.", "error"); }
     }
 
