@@ -215,7 +215,7 @@
     // PERHATIAN: Masukkan Google Web App URL /exec anda
     // Pastikan Format Web App ini adalah Execute sbg: 'Me' & Access: 'Anyone'
     // =========================================================
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydQPW0CdQu6dk7Xv_Bu32K4I6Z2S9bBUN1EPdQddXmX67gkhooD9Vhy5bxsrATHUf_Qw/exec"; 
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzQSfa-UF93BUQOV0E54eCSQ6poE18oVXFjvp1fOFxaYDY62g2yoAKQtYmHItpCth-Z7A/execs"; 
 
     let map; let markersLayer = L.layerGroup(); 
     let globalData = []; let globalHeaders = [];
@@ -560,13 +560,51 @@
         document.getElementById('admin-settings-panel').classList.remove('flex');
     }
 
-    function verifyAdmin() {
-       let p = document.getElementById('admin-pwd').value; if(p === "") return;
-       document.getElementById('admin-auth-panel').classList.add('hidden');
-       let panelSet = document.getElementById('admin-settings-panel');
-       panelSet.classList.remove('hidden'); panelSet.classList.add('flex');
-       buildAdminUI();
+    async function verifyAdmin() {
+    let p = document.getElementById('admin-pwd').value;
+    if (p === "") {
+        Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Sila masukkan kata laluan.' });
+        return;
     }
+
+    // Papar loading semasa pengesahan dijalankan di server
+    Swal.fire({
+        title: 'Mengesahkan Akses...',
+        text: 'Sila tunggu sebentar',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading() }
+    });
+
+    try {
+        // Pindaan: Hantar request ke server untuk semak kata laluan sebenar
+        let req = await fetch(APPS_SCRIPT_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: 'checkPassword', password: p }),
+            headers: { "Content-Type": "text/plain;charset=utf-8" }
+        });
+        
+        let ans = await req.json();
+
+        if (ans.status === "success") {
+            Swal.close();
+            // Hanya jika berjaya, barulah buka panel
+            document.getElementById('admin-auth-panel').classList.add('hidden');
+            let panelSet = document.getElementById('admin-settings-panel');
+            panelSet.classList.remove('hidden');
+            panelSet.classList.add('flex');
+            buildAdminUI();
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Akses Ditolak',
+                text: 'Kata laluan yang anda masukkan adalah salah.'
+            });
+            document.getElementById('admin-pwd').value = "";
+        }
+    } catch (e) {
+        Swal.fire("Ralat Network", "Gagal menghubungi pelayan pengesahan. Sila cuba lagi.", "error");
+    }
+}
 
     function buildAdminUI() {
         let colRender = ``;
