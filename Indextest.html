@@ -26,9 +26,8 @@
     
     #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; background: #e2e8f0; }
 
-    /* Modal Pentadbir - PEMBETULAN: Z-index dan Flex agar butang tidak hilang */
     #admin-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 5000; justify-content: center; align-items: center; }
-    .modal-content-scale { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; flex-direction: column; }
+    .modal-content-scale { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     @keyframes modalPop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
   </style>
 </head>
@@ -106,9 +105,14 @@
 
       <div id="map-wrapper" class="flex-grow bg-white rounded-xl shadow-md relative ring-1 ring-gray-200 overflow-hidden h-full z-10">
         <div id="map"></div>
+
         <div id="draggable-tools">
-           <button id="fullscreen-btn" onclick="toggleMapFullscreen()" class="bg-gray-800 text-white px-4 py-2 text-xs shadow-lg rounded-md border border-gray-700 font-extrabold w-full hover:bg-black transition">⛶ MAP PENUH</button>
-           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 w-full hover:bg-gray-50 transition">🏷️ PAPAR NAMA</button>
+           <button id="fullscreen-btn" onclick="toggleMapFullscreen()" class="bg-gray-800 text-white px-4 py-2 text-xs shadow-lg rounded-md border border-gray-700 font-extrabold w-full hover:bg-black transition">
+              ⛶ MAP PENUH
+           </button>
+           <button id="toggle-label-btn" onclick="toggleNamaFasiliti()" class="bg-white px-4 py-2 text-xs shadow-lg rounded-md border-2 border-gray-300 font-extrabold text-blue-800 w-full hover:bg-gray-50 transition">
+              🏷️ PAPAR NAMA
+           </button>
            <div class="legend-box">
                <div class="flex justify-between items-center border-b border-gray-200 pb-1 mb-2">
                   <h4 class="font-extrabold text-[11px] text-gray-800 uppercase">Petunjuk</h4>
@@ -129,20 +133,20 @@
               <button onclick="closeAdminModal()" class="text-white hover:text-red-400 font-bold">TUTUP ✕</button>
           </div>
 
-          <div class="flex-grow overflow-y-auto filter-scroll">
-              <div id="admin-auth-panel" class="p-8 flex flex-col items-center justify-center bg-slate-50">
-                  <div class="text-[4rem] mb-2 text-blue-800">🔐</div>
-                  <p class="text-xs font-bold text-gray-600 uppercase mb-4">Pengesahan Pihak Pengurusan</p>
-                  
-                  <input type="password" id="admin-pwd" 
-                    onkeydown="if(event.key==='Enter') verifyAdmin()" 
-                    placeholder="Masukkan Kata Laluan..." 
-                    class="w-full max-w-[300px] p-2.5 border-2 border-gray-300 rounded focus:border-blue-500 text-center font-bold tracking-widest">
-                  
-                  <button onclick="verifyAdmin()" class="mt-4 bg-blue-700 text-white px-6 py-2 rounded font-extrabold uppercase text-xs shadow hover:bg-blue-800 transition">Sahkan Akses</button>
-              </div>
+          <div id="admin-auth-panel" class="p-8 flex flex-col items-center justify-center flex-grow bg-slate-50">
+              <div class="text-[4rem] mb-2 text-blue-800">🔐</div>
+              <p class="text-xs font-bold text-gray-600 uppercase mb-4">Pengesahan Pihak Pengurusan</p>
+              
+              <input type="password" id="admin-pwd" 
+                onkeydown="if(event.key==='Enter') verifyAdmin()" 
+                placeholder="Masukkan Kata Laluan..." 
+                class="w-full max-w-[300px] p-2.5 border-2 border-gray-300 rounded focus:border-blue-500 text-center font-bold tracking-widest">
+              
+              <button onclick="verifyAdmin()" class="mt-4 bg-blue-700 text-white px-6 py-2 rounded font-extrabold uppercase text-xs shadow hover:bg-blue-800 transition">Sahkan Akses</button>
+          </div>
 
-              <div id="admin-settings-panel" class="hidden flex-col bg-slate-50 p-4">
+          <div id="admin-settings-panel" class="hidden flex-col flex-grow overflow-hidden bg-slate-50">
+              <div class="p-4 overflow-y-auto filter-scroll flex-grow">
                   <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-green-500 flex justify-between items-center">
                      <div>
                          <h3 class="font-black text-green-800 text-xs uppercase">Pangkalan Data</h3>
@@ -162,11 +166,11 @@
                      <div id="admin-columns-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
                   </div>
               </div>
-          </div>
 
-          <div class="p-3 bg-blue-50/50 border-t flex justify-end gap-2 flex-shrink-0">
-             <button onclick="closeAdminModal()" class="px-4 py-2 bg-gray-200 font-bold text-xs rounded">Batal</button>
-             <button id="admin-save-btn" onclick="saveAdminSettings()" class="hidden px-5 py-2 bg-green-600 font-extrabold text-white text-xs rounded shadow uppercase">Simpan</button>
+              <div class="p-3 bg-blue-50/50 border-t flex justify-end gap-2">
+                 <button onclick="closeAdminModal()" class="px-4 py-2 bg-gray-200 font-bold text-xs rounded">Batal</button>
+                 <button id="admin-save-btn" onclick="saveAdminSettings()" class="hidden px-5 py-2 bg-green-600 font-extrabold text-white text-xs rounded shadow uppercase">Simpan</button>
+              </div>
           </div>
       </div>
   </div>
@@ -177,11 +181,19 @@
   <script>
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzQSfa-UF93BUQOV0E54eCSQ6poE18oVXFjvp1fOFxaYDY62g2yoAKQtYmHItpCth-Z7A/exec"; 
 
-    let map; let markersLayer = L.layerGroup(); 
-    let globalData = []; let globalHeaders = [];
-    let dynamicAllowedFilterIndices = []; let dynamicShapefilesList = []; 
-    let activeShapeLayers = {}; let isFullscreen = false; let isLabelVisible = false;
-    let groupCount = 0; let rowCount = 0; let categoryColorMap = {}; let activeFilterKeysSet = new Set();
+    let map; 
+    let markersLayer = L.layerGroup(); 
+    let globalData = []; 
+    let globalHeaders = [];
+    let dynamicAllowedFilterIndices = []; 
+    let dynamicShapefilesList = []; 
+    let activeShapeLayers = {}; 
+    let isFullscreen = false;
+    let isLabelVisible = false;
+    let groupCount = 0; 
+    let rowCount = 0;
+    let categoryColorMap = {};
+    let activeFilterKeysSet = new Set();
     
     const baseColors = ['blue', 'red', 'green', 'orange', 'violet', 'gold', 'yellow', 'grey', 'black'];
     const hexColors = ['#2A81CB', '#CB2B3E', '#2AAD27', '#CB8427', '#9C2BCB', '#FFD326', '#CAC428', '#7B7B7B', '#3D3D3D'];
@@ -191,9 +203,11 @@
       L.control.zoom({ position: 'topleft' }).addTo(map);
       L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 20 }).addTo(map);
       markersLayer.addTo(map);
+
       let toolsEl = document.getElementById('draggable-tools');
       new L.Draggable(toolsEl).enable();
       L.DomEvent.disableClickPropagation(toolsEl);
+
       initFullLoad();
     }
 
@@ -216,7 +230,6 @@
       } catch (e) { Swal.fire("Ralat", "Gagal menghubungi pangkalan data.", "error"); }
     }
 
-    // --- FUNGSI SEARCH DASHBOARD (KEKAL) ---
     function addGroup() {
       groupCount++;
       let container = document.getElementById('dynamic-groups-container');
@@ -259,10 +272,40 @@
 
     function toggleAllCheckboxes(m, rId) { document.querySelectorAll(`#${rId} .filter-chk`).forEach(cb => cb.checked = m.checked); }
     function resetFilters() { document.getElementById('dynamic-groups-container').innerHTML = ''; groupCount = 0; addGroup(); applyFilters(); }
-    function toggleSidebar() { let s = document.getElementById('sidebar'); let b = document.getElementById('show-sidebar-btn'); s.classList.toggle('sidebar-hidden'); b.classList.toggle('hidden'); setTimeout(() => map.invalidateSize(), 350); }
+    
+    function toggleSidebar() {
+        let s = document.getElementById('sidebar'); let b = document.getElementById('show-sidebar-btn');
+        s.classList.toggle('sidebar-hidden'); b.classList.toggle('hidden');
+        setTimeout(() => map.invalidateSize(), 350);
+    }
+    
     function toggleLegendContent() { let c = document.getElementById("legend-content"); c.style.display = c.style.display === "none" ? "block" : "none"; }
-    function toggleMapFullscreen() { isFullscreen = !isFullscreen; let w = document.getElementById('map-wrapper'); let b = document.getElementById('fullscreen-btn'); if (isFullscreen) { w.classList.add('fixed', 'inset-0', 'z-[4000]'); b.innerHTML = `✕ TUTUP`; b.classList.add('bg-red-600'); } else { w.classList.remove('fixed', 'inset-0', 'z-[4000]'); b.innerHTML = `⛶ MAP PENUH`; b.classList.remove('bg-red-600'); } setTimeout(() => map.invalidateSize(), 350); }
-    function toggleNamaFasiliti() { isLabelVisible = !isLabelVisible; let b = document.getElementById("toggle-label-btn"); b.classList.toggle('bg-red-600'); b.classList.toggle('text-white'); b.innerHTML = isLabelVisible ? `🚫 SOROK NAMA` : `🏷️ PAPAR NAMA`; applyFilters(); }
+    
+    // --- PENAMBAHBAIKAN 1: FUNGSI MAP PENUH DIPERBAIKI ---
+    function toggleMapFullscreen() {
+        isFullscreen = !isFullscreen;
+        let w = document.getElementById('map-wrapper');
+        let b = document.getElementById('fullscreen-btn');
+        
+        if (isFullscreen) {
+            w.classList.remove('relative');
+            w.classList.add('fixed', 'inset-0', 'z-[8000]', 'rounded-none');
+            b.innerHTML = `✕ TUTUP PENUH`; b.classList.add('bg-red-600');
+        } else {
+            w.classList.add('relative');
+            w.classList.remove('fixed', 'inset-0', 'z-[8000]', 'rounded-none');
+            b.innerHTML = `⛶ MAP PENUH`; b.classList.remove('bg-red-600');
+        }
+        setTimeout(() => map.invalidateSize(), 400);
+    }
+
+    function toggleNamaFasiliti() {
+        isLabelVisible = !isLabelVisible;
+        let b = document.getElementById("toggle-label-btn");
+        b.classList.toggle('bg-red-600'); b.classList.toggle('text-white');
+        b.innerHTML = isLabelVisible ? `🚫 SOROK NAMA` : `🏷️ PAPAR NAMA`;
+        applyFilters(); 
+    }
 
     function applyFilters() {
       let filterRules = [];
@@ -290,6 +333,7 @@
       renderMapMarkers(filtered, getCombinedKey);
     }
 
+    // --- PENAMBAHBAIKAN 2: FUNGSI HOVER NAMA FASILITI ---
     function renderMapMarkers(data, combinedKeyGen) {
       markersLayer.clearLayers();
       const latH = globalHeaders.find(h => h.toLowerCase().includes('lat'));
@@ -297,10 +341,23 @@
       data.forEach(item => {
         let lat = parseFloat(item[latH]), lng = parseFloat(item[longH]);
         if(!isNaN(lat) && !isNaN(lng)) {
-          let key = combinedKeyGen(item); let color = categoryColorMap[key] ? categoryColorMap[key].color : 'blue';
+          let key = combinedKeyGen(item);
+          let color = categoryColorMap[key] ? categoryColorMap[key].color : 'blue';
           let nama = item[globalHeaders[6]] || "Tiada Nama";
-          let m = L.marker([lat, lng], {icon: getCustomIcon(color)}).bindPopup(`<strong>${nama}</strong>`);
-          if(isLabelVisible) m.bindTooltip(nama, { permanent: true, direction: "right", className: "custom-map-label" });
+          
+          let m = L.marker([lat, lng], {icon: getCustomIcon(color)});
+          
+          // Popup apabila klik
+          m.bindPopup(`<strong>${nama}</strong>`);
+          
+          // Tooltip (Hover) - Muncul bila hover, hilang bila leave
+          m.bindTooltip(nama, { direction: 'top', offset: [0, -20] });
+
+          // Kekalkan fungsi butang "Papar Nama" (Label kekal)
+          if(isLabelVisible) {
+              m.bindTooltip(nama, { permanent: true, direction: "right", className: "custom-map-label" });
+          }
+          
           m.addTo(markersLayer);
         }
       });
@@ -331,7 +388,6 @@
         } else if(activeShapeLayers[idx]) { map.removeLayer(activeShapeLayers[idx]); delete activeShapeLayers[idx]; }
     }
 
-    // --- PENGURUSAN PENTADBIR (Satu-satunya bahagian yang diubah suai sedikit) ---
     function openAdminModal() { document.getElementById('admin-modal-overlay').style.display = 'flex'; document.getElementById('admin-pwd').focus(); }
     
     function closeAdminModal() { 
@@ -381,7 +437,6 @@
 
     async function saveAdminSettings() {
         let p = document.getElementById('admin-pwd').value;
-        // PEMBETULAN: Ambil yang bertanda sahaja (untuk membolehkan untick berfungsi)
         let cols = Array.from(document.querySelectorAll('.admin-col-chk:checked')).map(c => parseInt(c.value));
         let shapes = Array.from(document.querySelectorAll('.admin-sf-row')).map(row => ({
             color: row.querySelector('.admin-sf-color').value,
